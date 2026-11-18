@@ -69,9 +69,27 @@ WKWebView/WebGL-рендерера с одинаковыми настоящим�
     python3 -B tools/atlas_live_control.py dual off
     python3 -B tools/atlas_live_control.py screen main
     python3 -B tools/atlas_live_control.py speed 1.2
+    python3 -B tools/atlas_live_control.py pinned on
+    python3 -B tools/atlas_live_control.py backdrop on
+    python3 -B tools/atlas_live_control.py fullscreen on
+    python3 -B tools/atlas_live_control.py fullscreen off
+    python3 -B tools/atlas_live_control.py work-lines on
+    python3 -B tools/atlas_live_control.py adaptive-shape off
+    python3 -B tools/atlas_live_control.py zoom-in
+    python3 -B tools/atlas_live_control.py zoom-out
+    python3 -B tools/atlas_live_control.py universe
+    python3 -B tools/atlas_live_control.py reset-view
+    python3 -B tools/atlas_live_control.py fit-frame
+    python3 -B tools/atlas_live_control.py presentation-small
+    python3 -B tools/atlas_live_control.py presentation-full
 
-Команда получает квитанцию от **действительного процесса Atlas**. По
-умолчанию CLI обращается только к публичному приложению и не читает память.
+Команда получает квитанцию от **действительного процесса Atlas**. Для
+масштаба подтверждается также фактическая дистанция камеры. `status`
+возвращает состояние окна, переключателей и камеры. `pinned on` переводит
+фоновый Atlas поверх окон; `fullscreen on` разворачивает настоящее окно,
+не создавая отдельный macOS Space. Для возврата к рабочему столу используйте
+`fullscreen off`, затем `backdrop on`. По умолчанию CLI обращается только
+к публичному приложению и не читает память.
 Сценарий короткой живой демонстрации: [docs/LIVE_DEMO_RU.md](docs/LIVE_DEMO_RU.md).
 CLI не слушает микрофон; голосовой клиент сможет пользоваться командами
 только при доступном коннекторе/инструменте в его собственном режиме.

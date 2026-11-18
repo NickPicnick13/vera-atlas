@@ -7,7 +7,15 @@ Vera Atlas has three boundaries: **event producer → local metadata bus → vie
 The fixed-schema, local-only tool tools/atlas_live_control.py lets an
 authorized operator toggle the same presentation settings as the menu:
 comets, idle edges, continuous work edges, adaptive shape, motion speed,
-desktop backdrop and the second full WebGL window. A screen selector chooses
+desktop backdrop, pinned-above-windows level, screen-filling mode,
+zoom in/out, dive into the universe, reset camera view, geometrically fit
+the real graph to the viewport, and the optional second full WebGL window.
+For a narrated recording, `presentation-small` shows the compact round
+Atlas; `presentation-full` fills the active display AND enlarges the actual
+graph to the frame without screen clipping. These do not launch a new app
+or change the source topology. Camera actions acknowledge after JavaScript
+returns actual camera state; native options return actual window levels.
+A screen selector chooses
 the actual attached main/other display. The public bundle is the default.
 The helper compiles a tiny Swift sender on first use and requires an
 acknowledgement from the native app receiver for every requested change.

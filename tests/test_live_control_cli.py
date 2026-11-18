@@ -16,7 +16,7 @@ class LiveControlCLI(unittest.TestCase):
         )
 
     def test_comets_and_dual_dry_run_without_running_app(self):
-        for mode in ("comets", "dual", "idle-lines", "work-lines", "backdrop"):
+        for mode in ("comets", "dual", "idle-lines", "work-lines", "backdrop", "pinned", "fullscreen"):
             with self.subTest(mode=mode):
                 p = self.invoke("--dry-run", mode, "on")
                 self.assertEqual(p.returncode, 0, p.stderr)
@@ -32,6 +32,17 @@ class LiveControlCLI(unittest.TestCase):
         self.assertNotEqual(p.returncode, 0)
         p = self.invoke("--dry-run", "screen", "main")
         self.assertEqual(p.returncode, 0, p.stderr)
+
+    def test_camera_commands_dry_run_without_changing_gui(self):
+        for command in ("zoom-in", "zoom-out", "universe", "reset-view", "fit-frame",
+                        "presentation-small", "presentation-full", "live-status"):
+            with self.subTest(command=command):
+                p = self.invoke("--dry-run", command)
+                self.assertEqual(p.returncode, 0, p.stderr)
+                data = json.loads(p.stdout)
+                self.assertTrue(data["dry_run"])
+                self.assertEqual(data["option"], command)
+                self.assertEqual(data["value"], "go")
 
     def test_status_only_reads_settings(self):
         p = self.invoke("status")

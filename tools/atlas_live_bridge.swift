@@ -7,9 +7,13 @@ import Foundation
 final class Receipt: NSObject {
     let requestID: String
     var received = false
+    var payload: [String: Any] = [:]
     init(_ requestID: String) { self.requestID = requestID }
     @objc func didReceive(_ notification: Notification) {
         guard notification.userInfo?["request_id"] as? String == requestID else { return }
+        payload = (notification.userInfo ?? [:]).reduce(into: [String: Any]()) { result, element in
+            if let key = element.key as? String { result[key] = element.value }
+        }
         received = true
     }
 }
@@ -23,11 +27,15 @@ let bundle = args[0], option = args[1], raw = args[2]
 guard bundle == "local.vera.desktop-widget" || bundle == "org.vera-atlas.community" else {
     fail("unrecognized bundle")
 }
-let validBools: Set<String> = ["comets", "idle-lines", "work-lines", "adaptive-shape", "dual", "backdrop"]
+let validBools: Set<String> = ["comets", "idle-lines", "work-lines", "adaptive-shape", "dual", "backdrop", "pinned", "fullscreen"]
 let number: NSNumber
 if validBools.contains(option) {
     guard raw == "on" || raw == "off" else { fail("expected on or off") }
     number = NSNumber(value: raw == "on")
+} else if ["zoom-in", "zoom-out", "universe", "reset-view", "fit-frame",
+           "live-status", "presentation-small", "presentation-full"].contains(option) {
+    guard raw == "go" else { fail("action must be go") }
+    number = NSNumber(value: true)
 } else if option == "speed" {
     guard let speed = Double(raw), speed.isFinite, speed >= 0, speed <= 3 else {
         fail("speed must be 0 through 3")
@@ -71,4 +79,9 @@ while !listener.received && Date() < limit {
     _ = RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
 }
 guard listener.received else { fail("no acknowledgement from the running Atlas; check its process/version") }
-print("ATLAS_CONTROL_APPLIED option=\(option) value=\(raw) bundle=\(bundle)")
+guard JSONSerialization.isValidJSONObject(listener.payload),
+      let encoded = try? JSONSerialization.data(withJSONObject: listener.payload, options: [.sortedKeys]),
+      let json = String(data: encoded, encoding: .utf8) else {
+    fail("invalid app acknowledgement payload")
+}
+print(json)

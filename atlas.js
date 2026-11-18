@@ -175,6 +175,27 @@ window.__atlasSetContinuousWorkLines=enabled=>{
    chromeKey='';draw();request();
    return sphere.showContinuousWorkLines;
 };
+window.__atlasCameraState=()=>({
+   distance:Number(sphere.camera.distance.toFixed(5)),
+   panX:Number(sphere.camera.panX.toFixed(5)),
+   panY:Number(sphere.camera.panY.toFixed(5)),
+   width:Math.round(sphere.w),height:Math.round(sphere.h),
+   hasGraph:sphere.graph.nodes.length>0,
+   shapeMorph:Number((sphere.shapeMorph||0).toFixed(4)),
+   projectedBounds:(()=>{
+      const scene=sphere.lastCamera;
+      if(!scene||!sphere.graph.nodes.length)return null;
+      let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity,visible=0;
+      for(const node of sphere.graph.nodes){
+         const pos=AtlasSphere.projection(AtlasSphere.cameraPoint(node,scene),scene);
+         if(!pos.visible||!Number.isFinite(pos.x)||!Number.isFinite(pos.y))continue;
+         minX=Math.min(minX,pos.x);minY=Math.min(minY,pos.y);
+         maxX=Math.max(maxX,pos.x);maxY=Math.max(maxY,pos.y);visible++;
+      }
+      return visible?{left:Math.round(minX),right:Math.round(maxX),
+         top:Math.round(minY),bottom:Math.round(maxY),visibleNodes:visible}:null;
+   })()
+});
 window.__atlasWindowCommand=c=>{
    if(c==='lines-on'||c==='lines-off'){window.__atlasSetIdleLines(c==='lines-on');return;}
    if(c==='adaptive-on'||c==='adaptive-off'){window.__atlasSetAdaptiveShape(c==='adaptive-on');return;}
@@ -183,6 +204,7 @@ window.__atlasWindowCommand=c=>{
       window.__atlasSetContinuousWorkLines(c==='work-lines-on');return;
    }
 
+   if(c==='fit-frame'){sphere.fitFrame?.();draw();request();return;}
    if(c==='replay')$('replay').click();
    else if(c==='recent')window.__atlasReplayRecent();
    else if(c==='reset'){sphere.resetCamera?.();draw();request();}

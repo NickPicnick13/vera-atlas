@@ -23,10 +23,14 @@ PREFS = {
     "adaptive-shape": ("veraAtlasAdaptiveShapeEnabled", "on"),
     "dual": ("veraAtlasDualDisplayEnabled", "off"),
     "backdrop": ("veraAtlasBackdropEnabled", "off"),
+    "pinned": ("veraWindowPinned", "on"),
     "speed": ("veraAtlasMotionSpeed", "1.0"),
     "screen": ("veraAtlasBackdropScreenID", ""),
 }
-COMMANDS = tuple(PREFS)
+ACTIONS = ("zoom-in", "zoom-out", "universe", "reset-view", "fit-frame",
+           "live-status", "presentation-small", "presentation-full")
+BOOLEAN_ACTIONS = ("fullscreen",)
+COMMANDS = tuple(PREFS) + BOOLEAN_ACTIONS + ACTIONS
 
 
 def preference(bundle: str, key: str, fallback: str) -> str:
@@ -83,7 +87,11 @@ def main() -> int:
     sub.add_parser("status", help="Read current choices without making changes.")
     for name in COMMANDS:
         cmd = sub.add_parser(name)
-        if name == "speed":
+        if name in ACTIONS:
+            pass
+        elif name in BOOLEAN_ACTIONS:
+            cmd.add_argument("value", choices=("on", "off"))
+        elif name == "speed":
             cmd.add_argument("value", type=float)
         elif name == "screen":
             cmd.add_argument("value", help="main, other, or part of a display name")
@@ -92,15 +100,32 @@ def main() -> int:
     args = parser.parse_args()
     bundle = APP_IDS[args.app]
     if args.command == "status":
-        print(json.dumps({
-            "ok": True, "app": args.app, "running": running(args.app),
+        is_running = running(args.app)
+        data = {
+            "ok": True, "app": args.app, "running": is_running,
             "settings": {
                 name: preference(bundle, key, fallback)
                 for name, (key, fallback) in PREFS.items()
             },
-        }, ensure_ascii=False))
+        }
+        if is_running:
+            try:
+                native = subprocess.run(
+                    [str(helper(Path(__file__).resolve().parent)),
+                     bundle, "live-status", "go"],
+                    capture_output=True, text=True, timeout=15, check=False,
+                )
+                if native.returncode == 0:
+                    info = json.loads(native.stdout)
+                    data["native"] = info.get("state")
+                    data["camera"] = info.get("camera")
+                else:
+                    data["native_error"] = (native.stderr or native.stdout).strip()[-180:]
+            except (RuntimeError, json.JSONDecodeError, subprocess.TimeoutExpired) as exc:
+                data["native_error"] = str(exc)[:180]
+        print(json.dumps(data, ensure_ascii=False))
         return 0
-    value = str(args.value)
+    value = "go" if args.command in ACTIONS else str(args.value)
     if args.command == "speed":
         if not 0 <= args.value <= 3:
             parser.error("speed must be between 0 and 3")
@@ -119,11 +144,27 @@ def main() -> int:
     if result.returncode:
         raise RuntimeError("Atlas did not acknowledge control: " +
                            (result.stderr or result.stdout).strip()[-800:])
-    key, fallback = PREFS[args.command]
-    actual = preference(bundle, key, fallback)
+    try:
+        receipt = json.loads(result.stdout)
+        native = receipt["state"]
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise RuntimeError("native receipt lacks verified state") from exc
+    if args.command in ACTIONS and not isinstance(receipt.get("camera"), dict):
+        raise RuntimeError("native app did not confirm camera state")
+    if args.command in ("pinned", "fullscreen", "backdrop", "comets", "idle-lines",
+                        "work-lines", "adaptive-shape", "dual"):
+        key = {
+            "idle-lines": "idleLines", "work-lines": "workLines",
+            "adaptive-shape": "adaptiveShape",
+        }.get(args.command, args.command)
+        if native.get(key) is not (value == "on"):
+            raise RuntimeError(f"native window setting was not applied: {key}")
+    stored = (preference(bundle, *PREFS[args.command])
+              if args.command in PREFS else None)
     print(json.dumps({
         "ok": True, "acknowledged": True, "app": args.app,
-        "option": args.command, "requested": value, "stored": actual,
+        "option": args.command, "requested": value, "stored": stored,
+        "native": native, "camera": receipt.get("camera"),
     }, ensure_ascii=False))
     return 0
 

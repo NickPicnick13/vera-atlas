@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased — one-screen narrated presentation
+
+- Added `presentation-small` and `presentation-full` to show a compact
+  round graph for the opening, then fill the recording monitor with the
+  **actual** projected graph. No second monitor or image stretching.
+- Added `fit-frame` to fit native graph geometry to a wide viewport;
+  adaptive fit can be disabled to demonstrate intentional clipping,
+  then restored without altering nodes or edges.
+- Real 47,979-node graph verified on Odyssey: 428x428 compact -> 3008x846
+  full-frame, projected bounds x=3..3005 and y=1..845 when fitted;
+  y=-405..1248 when unrestricted. Added deterministic viewport QA.
+
+## Unreleased — complete live presentation remote
+
+- Added idempotent native controls for pinned-above-windows and screen-filled
+  window state plus WebKit camera commands: zoom in, zoom out, universe dive
+  and reset view. The original line/comet toggles are unchanged.
+- All commands return an acknowledged native window/settings snapshot; camera
+  actions confirm actual JavaScript camera distance/pan after application.
+- Public and private CLI, bridge, Python tests and five-minute voice cue
+  sheet stay synchronized. Does not require a rebuild *during* a recording,
+  a second monitor or a fabricated graph event.
+
 ## Unreleased — additive comet flight patterns
 
 - Restored bright **line pulses as an invariant base layer**, independent of

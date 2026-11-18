@@ -470,9 +470,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         refreshDualDisplay()
     }
 
+    private func liveControlState() -> [String: Any] {
+        let window = panel as? AtlasWindow
+        return [
+            "pinned": pinned, "fullscreen": window?.fillsScreenFrame == true,
+            "backdrop": desktopBackdrop, "visible": window?.isVisible == true,
+            "windowLevel": window?.level.rawValue ?? -1,
+            "comets": showComets, "idleLines": showIdleLines,
+            "workLines": continuousWorkLines, "adaptiveShape": adaptiveShape,
+            "motionSpeed": motionSpeed, "dual": dualDisplayEnabled,
+            "displayID": Int(Self.displayID(window?.screen ?? NSScreen.main ?? NSScreen.screens[0]) ?? 0)
+        ]
+    }
+
+    private func liveControlAck(_ requestID: String, option: String,
+                                camera: [String: Any]? = nil) {
+        guard !requestID.isEmpty && requestID.count <= 64 else { return }
+        var data: [String: Any] = [
+            "request_id": requestID, "option": option,
+            "state": liveControlState()
+        ]
+        if let camera { data["camera"] = camera }
+        DistributedNotificationCenter.default().post(
+            name: Self.liveControlAckNotice, object: nil, userInfo: data)
+    }
+
     @objc private func applyLiveControl(_ notice: Notification) {
         guard let option = notice.userInfo?["option"] as? String,
               let input = notice.userInfo?["value"] as? NSNumber else { return }
+        let requestID = notice.userInfo?["request_id"] as? String ?? ""
         let on = input.boolValue
         switch option {
         case "comets":
@@ -487,6 +513,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             if dualDisplayEnabled != on { toggleDualDisplay() }
         case "backdrop":
             if desktopBackdrop != on { toggleDesktopBackdrop() }
+        case "pinned":
+            // Pinning a desktop-backdrop level alone doesn't raise the window.
+            if on && desktopBackdrop { toggleDesktopBackdrop() }
+            if pinned != on { setPinned(on) }
+        case "fullscreen":
+            if (panel as? AtlasWindow)?.fillsScreenFrame != on { toggleAtlasScreenFrame() }
+        case "presentation-small":
+            guard let window = panel as? AtlasWindow, let webView else { return }
+            if window.fillsScreenFrame { toggleAtlasScreenFrame() }
+            if desktopBackdrop { toggleDesktopBackdrop() }
+            if !pinned { setPinned(true) }
+            if !window.isVisible { window.orderFrontRegardless() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, weak webView] in
+                guard let self, let webView, self.webView === webView,
+                      window.fillsScreenFrame == false, self.desktopBackdrop == false else { return }
+                webView.evaluateJavaScript("window.__atlasWindowCommand?.('reset'); window.__atlasCameraState?.()") { value, error in
+                    guard error == nil, let camera = value as? [String: Any] else { return }
+                    self.liveControlAck(requestID, option: option, camera: camera)
+                }
+            }
+            return
+        case "presentation-full":
+            guard let window = panel as? AtlasWindow, let webView else { return }
+            if desktopBackdrop { toggleDesktopBackdrop() }
+            if !window.fillsScreenFrame { toggleAtlasScreenFrame() }
+            if !adaptiveShape { toggleAdaptiveShape() }
+            if !window.isVisible { window.orderFrontRegardless() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.27) { [weak self, weak webView] in
+                guard let self, let webView, self.webView === webView,
+                      window.fillsScreenFrame, self.adaptiveShape else { return }
+                webView.evaluateJavaScript("window.__atlasWindowCommand?.('fit-frame'); window.__atlasCameraState?.()") { value, error in
+                    guard error == nil, let camera = value as? [String: Any],
+                          let w = camera["width"] as? NSNumber, let h = camera["height"] as? NSNumber,
+                          w.doubleValue >= window.frame.width * 0.85,
+                          h.doubleValue >= window.frame.height * 0.85 else { return }
+                    self.liveControlAck(requestID, option: option, camera: camera)
+                }
+            }
+            return
+        case "zoom-in", "zoom-out", "universe", "reset-view", "fit-frame", "live-status":
+            guard let webView else { return }
+            let jsCommand = option == "reset-view" ? "reset" : option
+            let js = option == "live-status"
+                ? "window.__atlasCameraState?.() ?? null"
+                : "window.__atlasWindowCommand?.('\(jsCommand)'); window.__atlasCameraState?.() ?? null"
+            webView.evaluateJavaScript(js) { [weak self] result, error in
+                guard let self, error == nil, let camera = result as? [String: Any] else {
+                    return // no ACK means camera not verified
+                }
+                self.liveControlAck(requestID, option: option, camera: camera)
+            }
+            return
         case "screen":
             guard let target = NSScreen.screens.first(where: { Self.displayID($0) == input.uint32Value })
             else { return }
@@ -504,12 +582,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
         let line = "atlas-live-control pid=\(ProcessInfo.processInfo.processIdentifier) option=\(option) value=\(input)\n"
         FileHandle.standardError.write(Data(line.utf8))
-        if let requestID = notice.userInfo?["request_id"] as? String,
-           requestID.count <= 64 && !requestID.isEmpty {
-            DistributedNotificationCenter.default().post(
-                name: Self.liveControlAckNotice, object: nil,
-                userInfo: ["request_id": requestID, "option": option])
-        }
+        liveControlAck(requestID, option: option)
     }
 
     @objc private func toggleDualDisplay() {

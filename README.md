@@ -82,9 +82,26 @@ second process:
     python3 -B tools/atlas_live_control.py dual off
     python3 -B tools/atlas_live_control.py screen other
     python3 -B tools/atlas_live_control.py speed 1.2
+    python3 -B tools/atlas_live_control.py pinned on
+    python3 -B tools/atlas_live_control.py backdrop on
+    python3 -B tools/atlas_live_control.py fullscreen on
+    python3 -B tools/atlas_live_control.py fullscreen off
+    python3 -B tools/atlas_live_control.py work-lines off
+    python3 -B tools/atlas_live_control.py adaptive-shape on
+    python3 -B tools/atlas_live_control.py zoom-in
+    python3 -B tools/atlas_live_control.py zoom-out
+    python3 -B tools/atlas_live_control.py universe
+    python3 -B tools/atlas_live_control.py reset-view
+    python3 -B tools/atlas_live_control.py fit-frame
+    python3 -B tools/atlas_live_control.py presentation-small
+    python3 -B tools/atlas_live_control.py presentation-full
 
 The menu handler confirms each command over a local macOS notification.
-Only settings are changed: **no events are fabricated and no models run**.
+Zoom and camera commands return the actual WebKit camera distance, and
+`status` includes the live native window state. Pinning a desktop backdrop
+first promotes it above normal windows; fullscreen uses the same ordinary
+window rather than entering a new macOS fullscreen Space. These are
+visual-only controls: **no events are fabricated and no models run**.
 The CLI targets the public app by default and does not access private memory.
 See the [Russian live-demo script](docs/LIVE_DEMO_RU.md). It does not
 listen to a microphone; a voice agent must have actual connector access.

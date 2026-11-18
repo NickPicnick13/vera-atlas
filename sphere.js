@@ -468,6 +468,22 @@ class Sphere {
       if(this.el.width!==w||this.el.height!==h){this.el.width=w;this.el.height=h;}
       this.c.setTransform(dpr,0,0,dpr,0,0);
    }
+   fitFrame(){
+      // A camera command, NOT a window resize and NOT a topology change.
+      // On an ultrawide window, get close enough to engage the existing
+      // nonlinear viewport-fit wall (shapeMorph=1), allowing the REAL graph
+      // to approach every edge without clipping. On square widgets keep the
+      // complete round outline. The user can disable adaptiveShape and dive
+      // past the edges intentionally.
+      this.manualOverride=true;
+      this.camera={
+         distance:clamp(this.eye()/Math.max(1,this.h)/
+             (this.w/Math.max(1,this.h)>2.35?.86:.44),1.3,HOME),
+         panX:0,panY:0
+      };
+      this.returning=null;
+      this.shapeStamp=null; // re-evaluate the geometric fit on the next draw
+   }
    resetCamera(){
       this.manualOverride=true;this.camera={distance:HOME,panX:0,panY:0};
       this.pose={yaw:0,pitch:0};this.angle=0;
