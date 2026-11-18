@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — additive comet flight patterns
+
+- Restored bright **line pulses as an invariant base layer**, independent of
+  the optional comets checkbox. Switching the overlay on/off no longer
+  changes pulse geometry, color or opacity.
+- Added four varied comet trajectories on verified edges: arc, zigzag,
+  helix-style orbit and hops. A bounded per-edge history picks new seeded
+  parameters and prevents repeating the same style on consecutive events.
+- Deterministic QA verifies all four variants, 36 event/view-size scenarios,
+  216 real-edge signals, unchanged line pulses with overlay on/off,
+  no duplicate styles on the same edge in adjacent events, and no motion
+  when no verified trace exists.
+
 ## Unreleased — live presentation controls
 
 - Added local, acknowledged CLI for live setting changes and display

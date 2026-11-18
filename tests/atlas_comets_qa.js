@@ -2,10 +2,13 @@
 // Production rendering regression without browser, external process, or live fake events.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const source=fs.readFileSync(path.resolve(__dirname,'../sphere.js'),'utf8');
-let images=0, cometCores=0;
+let images=0, cometCores=0, strokes=[], start=null, end=null;
 const ctx={
  clearRect(){},setTransform(){},save(){},restore(){},beginPath(){},
- moveTo(){},lineTo(){},stroke(){},fill(){},arc(x,y,r){if(r===3.25)cometCores++;},fillRect(){},
+ moveTo(x,y){start=[x,y]},lineTo(x,y){end=[x,y]},
+ stroke(){if(start&&end)strokes.push({width:this.lineWidth, mode:this.globalCompositeOperation,
+   a:start.map(v=>Math.round(v*1000)/1000),b:end.map(v=>Math.round(v*1000)/1000)})},
+ fill(){},arc(x,y,r){if(r===3.25)cometCores++;},fillRect(){},
  drawImage(){images++;},
  createRadialGradient(){return {addColorStop(){}}}
 };
@@ -24,9 +27,10 @@ sphere.camera.distance=4.55;sphere.manualOverride=true;
 sphere.adaptiveShape=true;sphere.shapeMorph=1;sphere.shapeStamp=2400;
 assert.equal(sphere.showComets,false,'line-only initial state');
 function render(){
- images=0;
+ images=0;strokes=[];start=null;end=null;
  const view=sphere.render(2400,{seek:true,ageOverride:2400});
- return {view,images};
+ const linePulse=strokes.filter(v=>v.width===2&&v.mode==='lighter');
+ return {view,images,linePulse};
 }
 const off=render();
 assert.equal(off.view.signals.length,2,'both real graph edges stay active');
@@ -42,6 +46,9 @@ for(const signal of off.view.signals){
 }
 sphere.showComets=true;
 const on=render();
+assert.ok(off.linePulse.length>0,'line-only mode must trace moving pulses on edges');
+assert.deepEqual(on.linePulse,off.linePulse,
+  'with comets enabled, the ORIGINAL line-pulse path must still be rendered unchanged');
 assert.equal(on.view.signals.length,off.view.signals.length);
 assert.equal(on.images-off.images,on.view.signals.length,'one head glow per selected edge');
 let distinct=0;
@@ -92,12 +99,18 @@ const narrow=new Sphere(canvas);narrow.resize();
 narrow.setData({nodes,edges});
 narrow.setTrace({focusEdges:edges.map(e=>[e.a,e.b]),eventState:'returned'},0,'replay');
 narrow.camera.distance=4.55;narrow.manualOverride=true;narrow.adaptiveShape=true;
-cometCores=0;
+cometCores=0;strokes=[];
 narrow.showComets=false;
 const narrowOff=narrow.render(2400,{seek:true,ageOverride:2400});
+const narrowLineOff=strokes.filter(v=>v.width===2&&v.mode==='lighter');
 assert.equal(cometCores,0,'no comet core while switched off');
+strokes=[];
 narrow.showComets=true;
 const narrowOn=narrow.render(2400,{seek:true,ageOverride:2400});
+const narrowLineOn=strokes.filter(v=>v.width===2&&v.mode==='lighter');
+assert.ok(narrowLineOff.length>0,'Samsung baseline has visible traced pulses');
+assert.deepEqual(narrowLineOn,narrowLineOff,
+ 'Samsung must retain the EXACT line-tracing layer with comets enabled');
 assert.equal(cometCores,narrowOn.signals.length,'visible core per comet on narrow display');
 assert.equal(narrowOn.signals.length,narrowOff.signals.length);
 canvas.getBoundingClientRect=oldRect;

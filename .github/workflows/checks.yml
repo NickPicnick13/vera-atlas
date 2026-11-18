@@ -21,6 +21,8 @@ jobs:
           node --check atlas.js
       - name: Reversible comet animation test
         run: node tests/atlas_comets_qa.js
+      - name: Additive comet paths (event-seeded variants)
+        run: node tests/atlas_comet_variants_qa.js
       - name: Verify deterministic synthetic graph
         run: |
           python3 -B examples/generate_demo.py

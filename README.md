@@ -64,9 +64,11 @@ WKWebView/WebGL renderer on the other connected monitor. Both run original
 animation and process the same verified event stream independently, not a
 delayed image mirror. Untick to stop and release the secondary renderer.
 The mode uses extra GPU and RAM, without imposing automatic quality caps.
-Ordinary one-screen switching remains available. On narrower screens comet
-heads receive a brighter core and wider spatial offset from highlighted lines,
-so they remain perceptible. The ultrawide display appearance is unchanged.
+Ordinary one-screen switching remains available. **Line pulses are always
+rendered unchanged**; enabling comets only adds a second visual layer. Heads
+vary between swooping arcs, sharp zigzags, helix-like orbits and hops, with
+per-event seeded variations that avoid consecutive repetition on the same
+confirmed edge. Narrow screens retain a bright visible core.
 
 ### Control the live app during a narrated recording
 
