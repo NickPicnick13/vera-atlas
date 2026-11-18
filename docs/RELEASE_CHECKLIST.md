@@ -1,33 +1,35 @@
 # Public release checklist
 
-**Status:** community source release candidate for `NickPicnick13/vera-atlas`. This repository is a sanitized copy, **not** the installed personal app. A notarized download is not provided.
+**Status:** PUBLIC SOURCE RELEASE CANDIDATE — https://github.com/NickPicnick13/vera-atlas (MIT). Source-only, no notarized macOS binary; the personal installed app is separate.
 
 ## Automated gates
 
-- [ ] Fresh `git ls-files` and staged diff contain only the approved allowlist.
-- [ ] No real memory graph or generated binaries in Git.
-- [ ] Tests pass on a clean macOS build: Python unittest, Node syntax, Swift compile, ad-hoc code-sign and native graph export.
-- [ ] A synthetic event follows a distinct model → request → task route; no actual API request is made.
-- [ ] Source and document scan shows no credentials, private absolute paths, Notion exports, chat transcripts, or private screenshots.
-- [ ] No DSH session scanning or secret reading without explicit opt-in variables.
-- [ ] macOS bundle identifier does not collide with the original app.
-- [ ] Screenshot is a **headless synthetic** rendering, not a desktop capture.
+- [x] Fresh `git ls-files` and staged diff contain only the approved allowlist.
+- [x] No real memory graph or generated binaries in Git.
+- [x] Tests passed on the preparation Mac (5 Python tests, Node syntax, Swift build, code-sign, native export). Independent GitHub Actions result tracked separately.
+- [x] A synthetic event follows a distinct model → request → task route; no actual API request is made.
+- [x] Source and document scan shows no credentials, private absolute paths, Notion exports, chat transcripts, or private screenshots.
+- [x] No DSH session scanning or secret reading without explicit opt-in variables.
+- [x] macOS bundle identifier does not collide with the original app.
+- [x] Screenshot is a **headless synthetic** rendering, not a desktop capture.
 
-## Owner decisions before publishing
+## Publication decisions and distribution policy
 
 - [x] **License:** MIT, approved by the owner. See `LICENSE`.
 - [x] **GitHub namespace and repo name:** `NickPicnick13/vera-atlas`, using the existing signed-in account.
 - [x] **Visibility:** public, explicitly approved by the owner.
 - [x] **Brand and attribution:** Vera Atlas, copyright 2026 NickPicNick (NickPicnick13), repository contact through GitHub.
-- [ ] **Third-party rights.** Check whether any upstream contributions/borrowed snippets require notices or permission. Unused GSAP is intentionally excluded.
+- [x] **Vendored assets:** unused GSAP excluded. App uses Apple/system frameworks, Python standard library and project source; review rights for future dependencies separately.
 - [x] **Public binary policy:** source only; if distributing `.app` later, sign and notarize properly.
-- [ ] **Final visual inspection.** Approve the preview and on-screen macOS controls on a second Mac if available.
+- [ ] **Independent Mac visual acceptance:** optional follow-up on another machine; programmatic WebGL screenshot and source-host build already passed.
 
-## Publish only after approval
+## Public repository and future updates
 
 ```sh
-# Example, after the owner has selected a GitHub account, license, and visibility:
-# gh repo create <NAMESPACE>/vera-atlas --public --source=. --remote=origin --push
+# Existing public repository: https://github.com/NickPicnick13/vera-atlas
+# For future approved updates:
+git diff --cached --check
+git push origin main
 ```
 
 The initial GitHub repository was created from the reviewed source index. Before any future push, check `git status`, `git diff --cached`, `git ls-files` and `git remote -v`. Never push access logs, local builds, or real memory exports.
