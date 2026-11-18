@@ -340,6 +340,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 UserDefaults.standard.set(Int(id), forKey: Self.backdropScreenDefaultsKey)
             }
         }
+        window.snapAcrossDisplays = desktopBackdrop
         if !window.isVisible { window.orderFrontRegardless() }
         UserDefaults.standard.set(desktopBackdrop, forKey: Self.backdropDefaultsKey)
         scheduleLayoutRead()
@@ -369,6 +370,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         window.ignoresMouseEvents = false
+        window.snapAcrossDisplays = true
         window.orderFrontRegardless()
         if let id = Self.displayID(target) {
             UserDefaults.standard.set(Int(id), forKey: Self.backdropScreenDefaultsKey)
@@ -505,6 +507,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         window.ignoresMouseEvents = false
+        window.snapAcrossDisplays = true
         window.orderFrontRegardless()
     }
 
@@ -578,6 +581,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         p.collectionBehavior = desktopBackdrop ? [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
             : (staysOnTop ? [.canJoinAllSpaces, .fullScreenAuxiliary] : [])
         p.ignoresMouseEvents = false
+        (p as? AtlasWindow)?.snapAcrossDisplays = desktopBackdrop
         p.hidesOnDeactivate = false
         updateStatusIcon()
         webView?.evaluateJavaScript("window.__widgetState && window.__widgetState('\(staysOnTop ? "pinned" : "panel")')")

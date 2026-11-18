@@ -15,6 +15,9 @@ final class AtlasWindow: NSWindow {
     var graphHitArea: NSRect?
     var fillsScreenFrame = false
     private var drag: (point: NSPoint, origin: NSPoint)?
+    private var dragSourceScreen: NSScreen?
+    private var dragCheckTimer: Timer?
+    var snapAcrossDisplays = false
 
     /// The delegate selects the target display after a complete Command-drag.
     var onCommandDragEnded: ((NSScreen?) -> Void)?
@@ -38,6 +41,42 @@ final class AtlasWindow: NSWindow {
 
     func cancelManipulation() {
         drag = nil
+        dragSourceScreen = nil
+        dragCheckTimer?.invalidate()
+        dragCheckTimer = nil
+    }
+
+    private func finishCommandDrag(on screen: NSScreen?) {
+        guard drag != nil else { return }
+        cancelManipulation()
+        onCommandDragEnded?(screen)
+    }
+
+    // A drag can leave the huge, desktop-level window before mouseUp is
+    // delivered. Sample the global pointer even when no further event arrives.
+    private func pollCommandDrag() {
+        guard drag != nil else { dragCheckTimer?.invalidate(); dragCheckTimer=nil; return }
+        let pointer = NSEvent.mouseLocation
+        let destination = Self.display(containing: pointer)
+        if snapAcrossDisplays, let start = dragSourceScreen, let destination,
+           !NSEqualRects(start.frame, destination.frame) {
+            finishCommandDrag(on: destination)
+            return
+        }
+        if NSEvent.pressedMouseButtons & 1 == 0 {
+            finishCommandDrag(on: destination ?? screen)
+        }
+    }
+
+    private func beginCommandDrag(_ point: NSPoint) {
+        drag = (point, frame.origin)
+        dragSourceScreen = Self.display(containing: NSEvent.mouseLocation) ?? screen
+        dragCheckTimer?.invalidate()
+        let timer = Timer(timeInterval: 0.04, repeats: true) { [weak self] _ in
+            self?.pollCommandDrag()
+        }
+        dragCheckTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     /// Hit bounds from the page use its top-left origin; AppKit's view origin is bottom-left.
@@ -54,6 +93,12 @@ final class AtlasWindow: NSWindow {
             switch event.type {
             case .leftMouseDragged:
                 let point = convertPoint(toScreen: event.locationInWindow)
+                if snapAcrossDisplays, let start = dragSourceScreen,
+                   let destination = Self.display(containing: point),
+                   !NSEqualRects(start.frame, destination.frame) {
+                    finishCommandDrag(on: destination)
+                    return
+                }
                 let fresh = NSPoint(x: activeDrag.origin.x + point.x - activeDrag.point.x,
                                     y: activeDrag.origin.y + point.y - activeDrag.point.y)
                 let targetScreen = NSScreen.screens.first { $0.frame.contains(point) } ?? screen
@@ -69,8 +114,7 @@ final class AtlasWindow: NSWindow {
                 // old oversized backdrop window still intersects the first screen.
                 let cursor = NSEvent.mouseLocation
                 let destination = Self.display(containing: cursor) ?? screen
-                drag = nil
-                onCommandDragEnded?(destination)
+                finishCommandDrag(on: destination)
                 return
             default: break
             }
@@ -81,7 +125,7 @@ final class AtlasWindow: NSWindow {
            isInsideGraph(event.locationInWindow) {
             // Intercept before WKWebView's first-mouse check so the first ⌘-drag works.
             makeKey()
-            drag = (convertPoint(toScreen: event.locationInWindow), frame.origin)
+            beginCommandDrag(convertPoint(toScreen: event.locationInWindow))
             return
         }
         if event.type == .leftMouseDown && !isKeyWindow {

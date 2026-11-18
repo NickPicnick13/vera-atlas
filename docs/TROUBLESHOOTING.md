@@ -41,7 +41,10 @@ For example, a 3,840-pixel window on a 1,920-pixel second display could put
 the graph centre at the display's far edge, making the window appear invisible.
 
 The fixed Command-drag handler chooses the destination from the global mouse
-position at release, refits the backdrop to that display's visible frame,
+position **during the drag** (40 ms pointer check) as well as at release. It
+immediately snaps the window to the destination on crossing, even if macOS
+does not deliver mouseUp to the former huge desktop-level window, and refits
+the backdrop to that display's visible frame,
 and remembers the display ID for next launch. It also keeps the normal panel
 restoration on the chosen monitor. It does not modify monitor resolution,
 brightness or display arrangement.

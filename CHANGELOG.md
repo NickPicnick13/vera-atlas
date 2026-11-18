@@ -12,6 +12,7 @@
   and physical pixel visibility are not inferred.
 - Fixed desktop-background window disappearing when dragged from a wide primary monitor to a narrower, differently positioned second display. Command-drag now retargets its visible frame on release, remembers the chosen display and restores the ordinary panel there.
 - Added a native display-selection/geometry self-test that checks each attached monitor without starting another app instance.
+- Made cross-screen Command-drag robust when the old low-level window stops receiving drag/mouseUp events: a short-lived pointer tracker snaps the background onto the destination as the cursor crosses the display boundary.
 - Maintained the 4,506-node synthetic sample, separate app preferences and
   opt-in source access; no personal graph or raw session data is shipped.
 

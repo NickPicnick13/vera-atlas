@@ -13,7 +13,7 @@ Vera Atlas is a transparent macOS menu-bar app with a GPU-rendered constellation
 - An interactive 3D graph with GPU/WebGL rendering and Canvas fallback.
 - Desktop-background or floating panel, zoom, drag, rotation and per-user settings.
 - Panoramic ultrawide mode: circular-looking centre; extra space expands near the edges.
-- Drag the desktop-backdrop Atlas between displays using Command-drag; the background refits to the destination display at release and remembers that display for the next launch.
+- Drag the desktop-backdrop Atlas between displays using Command-drag; the background snaps to the destination display as soon as the cursor crosses the boundary (or on release), and remembers that display for the next launch.
 - Toggle static edges / only show confirmed activity; adjustable rotation speed (0–3×).
 - **Comets over lines** switch: bright pulses follow the exact visible edge when off; the original 3D comet heads return when on (off by default).
 - Local, metadata-only event bus and persisted node identities.
