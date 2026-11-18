@@ -27,6 +27,8 @@ jobs:
           git diff --exit-code -- examples/demo-graph.json
       - name: Build ad-hoc-signed macOS app
         run: ./make_app.sh
+      - name: Test backdrop display placement (when multiple displays attached)
+        run: .build/app/VeraAtlas.app/Contents/MacOS/VeraAtlas --selftest-backdrop-displays
       - name: Validate native graph export
         run: |
           .build/app/VeraAtlas.app/Contents/MacOS/VeraAtlas --export-atlas-base > /tmp/vera-atlas-public-graph.json

@@ -33,3 +33,23 @@ node tests/atlas_comets_qa.js
 
 Quit and reopen **only VeraAtlas.app**, not a separate AI runtime. An active
 event is needed to see a comet. This test does not alter display settings.
+
+## Atlas disappears after moving it to another display
+
+The previous desktop-background window retained the primary display's width.
+For example, a 3,840-pixel window on a 1,920-pixel second display could put
+the graph centre at the display's far edge, making the window appear invisible.
+
+The fixed Command-drag handler chooses the destination from the global mouse
+position at release, refits the backdrop to that display's visible frame,
+and remembers the display ID for next launch. It also keeps the normal panel
+restoration on the chosen monitor. It does not modify monitor resolution,
+brightness or display arrangement.
+
+Run the app build script after updating source and restart only VeraAtlas.app:
+the running app cannot pick up Swift changes without a restart. On Macs with
+two attached displays, run the native selftest with the executable argument
+--selftest-backdrop-displays; the selftest reports both target regions.
+
+This selftest validates real AppKit screen selection and window geometry, not
+visible pixels. Verify the finished drag visually on each display.

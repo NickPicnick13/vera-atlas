@@ -16,6 +16,14 @@ final class AtlasWindow: NSWindow {
     var fillsScreenFrame = false
     private var drag: (point: NSPoint, origin: NSPoint)?
 
+    /// The delegate selects the target display after a complete Command-drag.
+    var onCommandDragEnded: ((NSScreen?) -> Void)?
+    var isCommandDragging: Bool { drag != nil }
+    static func backdropFrame(for screen: NSScreen) -> NSRect { screen.visibleFrame }
+    static func display(containing point: NSPoint) -> NSScreen? {
+        NSScreen.screens.first { $0.frame.contains(point) }
+    }
+
     init(graphRect rect: NSRect) {
         super.init(contentRect: rect, styleMask: [.borderless], backing: .buffered, defer: false)
         title = "Атлас памяти"
@@ -57,7 +65,12 @@ final class AtlasWindow: NSWindow {
                 setFrameOrigin(origin)
                 return
             case .leftMouseUp:
+                // Global cursor position identifies the destination even while the
+                // old oversized backdrop window still intersects the first screen.
+                let cursor = NSEvent.mouseLocation
+                let destination = Self.display(containing: cursor) ?? screen
                 drag = nil
+                onCommandDragEnded?(destination)
                 return
             default: break
             }

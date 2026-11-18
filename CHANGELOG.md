@@ -10,6 +10,8 @@
   inspection in the existing passive observer, with no model calls by default.
 - Documented safe handoff hooks and clear limits: uninstrumented ChatGPT calls
   and physical pixel visibility are not inferred.
+- Fixed desktop-background window disappearing when dragged from a wide primary monitor to a narrower, differently positioned second display. Command-drag now retargets its visible frame on release, remembers the chosen display and restores the ordinary panel there.
+- Added a native display-selection/geometry self-test that checks each attached monitor without starting another app instance.
 - Maintained the 4,506-node synthetic sample, separate app preferences and
   opt-in source access; no personal graph or raw session data is shipped.
 

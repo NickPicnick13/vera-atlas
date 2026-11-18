@@ -11,6 +11,30 @@ enum PanelState { case menubar, panel, pinned }
 @main
 enum VeraDesktopGraph {
     static func main() {
+        // No app, second instance, live graph or user settings are touched.
+        if CommandLine.arguments.contains("--selftest-backdrop-displays") {
+            let screens = NSScreen.screens
+            guard screens.count >= 2 else {
+                print("BACKDROP_DISPLAY_TEST SKIP: fewer than two attached displays")
+                return
+            }
+            for (i, target) in screens.enumerated() {
+                let pointer = NSPoint(x: target.frame.midX, y: target.frame.midY)
+                guard let chosen = AtlasWindow.display(containing: pointer),
+                      NSEqualRects(chosen.frame, target.frame) else {
+                    print("BACKDROP_DISPLAY_TEST FAIL: wrong screen for cursor \(i)")
+                    exit(2)
+                }
+                let placed = AtlasWindow.backdropFrame(for: chosen)
+                guard NSEqualRects(placed, chosen.visibleFrame),
+                      chosen.frame.contains(NSPoint(x: placed.midX, y: placed.midY)) else {
+                    print("BACKDROP_DISPLAY_TEST FAIL: wrong frame for display \(i)")
+                    exit(3)
+                }
+                print("BACKDROP_DISPLAY_TEST display=\(i) area=\(Int(placed.width))x\(Int(placed.height)) centre=\(Int(placed.midX)),\(Int(placed.midY)) PASS")
+            }
+            return
+        }
         // Local verification; do not create an NSApplication, window, or singleton lock.
         let exportBase = CommandLine.arguments.contains("--export-atlas-base")
         if exportBase || CommandLine.arguments.contains("--export-atlas-payload") {
@@ -45,6 +69,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private var initiallyPlaced = false
     private var ordinaryFrameBeforeScreenFill: NSRect?
     private var desktopBackdrop = false
+    private var startupBackdropScreen: NSScreen?
+    private static let backdropScreenDefaultsKey = "veraAtlasBackdropScreenID"
+    private static func displayID(_ screen: NSScreen) -> UInt32? {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+    }
     private static let idleLinesDefaultsKey = "communityAtlasShowIdleLines"
     private static let workLinesDefaultsKey = "communityAtlasContinuousWorkLines"
     private static let adaptiveShapeDefaultsKey = "communityAtlasAdaptiveShapeEnabled"
@@ -66,9 +95,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         startLiveTrace()   // graph + первый трейс → payloadJSON (до создания webview)
         makePanel()
         if UserDefaults.standard.bool(forKey: Self.backdropDefaultsKey) {
+            let storedID = UInt32(UserDefaults.standard.integer(forKey: Self.backdropScreenDefaultsKey))
+            startupBackdropScreen = NSScreen.screens.first { Self.displayID($0) == storedID }
             toggleDesktopBackdrop()
         }
         installMonitors()
+        NotificationCenter.default.addObserver(self,
+             selector: #selector(atlasDisplayArrangementChanged(_:)),
+             name: NSApplication.didChangeScreenParametersNotification,
+             object: nil)
         // selftest: route a synthesized Escape through the same local monitor used by the live window.
         if CommandLine.arguments.contains("--selftest-escape") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -291,7 +326,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         } else {
             // Reuse the previously saved normal frame when leaving screen-fill.
             if window.fillsScreenFrame { toggleAtlasScreenFrame() }
-            guard let target = screen(for: window.frame, relativeTo: window) else { return }
+            guard let target = startupBackdropScreen ?? screen(for: window.frame, relativeTo: window) else { return }
+            startupBackdropScreen = nil
             ordinaryFrameBeforeBackdrop = window.frame
             persistOrdinaryGeometry(window)
             desktopBackdrop = true
@@ -299,13 +335,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
             window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
             window.hidesOnDeactivate = false
-            window.setFrame(target.visibleFrame, display: true, animate: false)
+            window.setFrame(AtlasWindow.backdropFrame(for: target), display: true, animate: false)
+            if let id = Self.displayID(target) {
+                UserDefaults.standard.set(Int(id), forKey: Self.backdropScreenDefaultsKey)
+            }
         }
         if !window.isVisible { window.orderFrontRegardless() }
         UserDefaults.standard.set(desktopBackdrop, forKey: Self.backdropDefaultsKey)
         scheduleLayoutRead()
         let receipt = "atlas-desktop-backdrop pid=\(ProcessInfo.processInfo.processIdentifier) enabled=\(desktopBackdrop) level=\(window.level.rawValue) size=\(Int(window.frame.width))x\(Int(window.frame.height))\n"
         FileHandle.standardError.write(Data(receipt.utf8))
+    }
+
+    /// On Cmd-drag release, fit the desktop-sized window to the destination
+    /// display. Keeping the 3840-wide old frame on a 1920-wide monitor pushed
+    /// the visual centre outside the visible area.
+    private func retargetBackdrop(to target: NSScreen, reason: String) {
+        guard desktopBackdrop, let window = panel as? AtlasWindow else { return }
+        let targetFrame = AtlasWindow.backdropFrame(for: target)
+        let oldFrame = window.frame
+        if !NSEqualRects(oldFrame, targetFrame) {
+            window.setFrame(targetFrame, display: true, animate: false)
+        }
+        // Restoring the ordinary panel after this move should keep it on
+        // the same display rather than teleporting back to the original.
+        if let prior = ordinaryFrameBeforeBackdrop {
+            let compact = NSRect(x: targetFrame.midX-prior.width/2,
+                                 y: targetFrame.midY-prior.height/2,
+                                 width: prior.width, height: prior.height)
+            ordinaryFrameBeforeBackdrop = normalFrameClampedToDisplay(
+                compact, relativeTo: window)
+        }
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
+        window.ignoresMouseEvents = false
+        window.orderFrontRegardless()
+        if let id = Self.displayID(target) {
+            UserDefaults.standard.set(Int(id), forKey: Self.backdropScreenDefaultsKey)
+        }
+        scheduleLayoutRead()
+        let id = Self.displayID(target) ?? 0
+        let marker = "atlas-backdrop-retarget pid=\(ProcessInfo.processInfo.processIdentifier) reason=\(reason) display=\(id) old=\(Int(oldFrame.width))x\(Int(oldFrame.height)) new=\(Int(targetFrame.width))x\(Int(targetFrame.height)) origin=\(Int(targetFrame.minX)),\(Int(targetFrame.minY))\n"
+        FileHandle.standardError.write(Data(marker.utf8))
+    }
+
+    private func finishBackdropDrag(on destination: NSScreen?) {
+        guard desktopBackdrop, let window = panel as? AtlasWindow else { return }
+        guard let target = destination ?? window.screen ?? NSScreen.main else { return }
+        retargetBackdrop(to: target, reason: "command-drag")
+    }
+
+    @objc private func atlasDisplayArrangementChanged(_ note: Notification) {
+        guard desktopBackdrop, let window = panel as? AtlasWindow,
+              !window.isCommandDragging else { return }
+        let savedID = UInt32(UserDefaults.standard.integer(forKey: Self.backdropScreenDefaultsKey))
+        if let target = NSScreen.screens.first(where: { Self.displayID($0) == savedID })
+                         ?? window.screen ?? NSScreen.main {
+            retargetBackdrop(to: target, reason: "display-change")
+        }
     }
 
     @objc private func toggleAtlasScreenFrame() {
@@ -463,6 +550,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         p.contentMinSize = Self.minContent
         p.contentMaxSize = Self.maxContent
         p.delegate = self
+        p.onCommandDragEnded = { [weak self] target in
+            self?.finishBackdropDrag(on: target)
+        }
 
         let cfg = WKWebViewConfiguration()
         cfg.userContentController.add(self, name: "widget")
