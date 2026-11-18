@@ -2,6 +2,23 @@
 
 Vera Atlas has three boundaries: **event producer → local metadata bus → viewer**. The default graph and bundled demo labels are synthetic. Real data sources are opt-in.
 
+## Narrated live controller
+
+The fixed-schema, local-only tool tools/atlas_live_control.py lets an
+authorized operator toggle the same presentation settings as the menu:
+comets, idle edges, continuous work edges, adaptive shape, motion speed,
+desktop backdrop and the second full WebGL window. A screen selector chooses
+the actual attached main/other display. The public bundle is the default.
+The helper compiles a tiny Swift sender on first use and requires an
+acknowledgement from the native app receiver for every requested change.
+No HTTP listener, background daemon, AI model or fabricated trace is created.
+User settings persist and should be restored after demonstrations.
+
+Unlike the separate local flash/document adapters used in private deployments,
+this tool only changes *visual settings*. It cannot fabricate live graph
+activity; use actual opt-in adapters or the clearly labelled synthetic demo
+event generator. See docs/LIVE_DEMO_RU.md.
+
 ## Synthetic demo
 
 ```sh

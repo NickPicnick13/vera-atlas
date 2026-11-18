@@ -25,6 +25,8 @@ jobs:
         run: |
           python3 -B examples/generate_demo.py
           git diff --exit-code -- examples/demo-graph.json
+      - name: Compile optional local presentation control
+        run: swiftc tools/atlas_live_bridge.swift -o /tmp/vera-atlas-control-cli
       - name: Build ad-hoc-signed macOS app
         run: ./make_app.sh
       - name: Test backdrop display placement (when multiple displays attached)

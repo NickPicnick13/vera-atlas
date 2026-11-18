@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — live presentation controls
+
+- Added local, acknowledged CLI for live setting changes and display
+  switching without app rebuilds or app restarts. Public target is default.
+- Added a privacy-conscious narrated demo script, static CLI tests and a
+  standalone Swift helper compilation check in CI.
+- No automatically generated events, microphone capture, network server,
+  external model calls or private memory shipped.
+
 ## [0.1.0-rc.3] — 2026-11-18
 
 - Added the optional **two full-quality Atlas displays** mode: two independent

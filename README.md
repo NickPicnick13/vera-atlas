@@ -68,6 +68,25 @@ Ordinary one-screen switching remains available. On narrower screens comet
 heads receive a brighter core and wider spatial offset from highlighted lines,
 so they remain perceptible. The ultrawide display appearance is unchanged.
 
+### Control the live app during a narrated recording
+
+Use the local, acknowledged CLI instead of editing code or launching a
+second process:
+
+    python3 -B tools/atlas_live_control.py status
+    python3 -B tools/atlas_live_control.py comets on
+    python3 -B tools/atlas_live_control.py idle-lines off
+    python3 -B tools/atlas_live_control.py dual on
+    python3 -B tools/atlas_live_control.py dual off
+    python3 -B tools/atlas_live_control.py screen other
+    python3 -B tools/atlas_live_control.py speed 1.2
+
+The menu handler confirms each command over a local macOS notification.
+Only settings are changed: **no events are fabricated and no models run**.
+The CLI targets the public app by default and does not access private memory.
+See the [Russian live-demo script](docs/LIVE_DEMO_RU.md). It does not
+listen to a microphone; a voice agent must have actual connector access.
+
 ## Connect real events
 
 The public edition deliberately does **not** scan your memory folders, session history or secrets on install. You may opt in to selected sources:

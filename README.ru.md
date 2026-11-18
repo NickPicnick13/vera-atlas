@@ -56,6 +56,26 @@ WKWebView/WebGL-рендерера с одинаковыми настоящим�
 комета теперь отчётливо отделяется от трассы, имеет яркое ядро и
 увеличенное свечение; на широком Odyssey прежний рисунок сохранён.
 
+### Управление Atlas во время видеодемонстрации
+
+Вместо правки кода или ручного поиска галочки можно отправлять
+**подтверждённые локальные команды** работающему приложению:
+
+    python3 -B tools/atlas_live_control.py status
+    python3 -B tools/atlas_live_control.py comets on
+    python3 -B tools/atlas_live_control.py comets off
+    python3 -B tools/atlas_live_control.py idle-lines on
+    python3 -B tools/atlas_live_control.py dual on
+    python3 -B tools/atlas_live_control.py dual off
+    python3 -B tools/atlas_live_control.py screen main
+    python3 -B tools/atlas_live_control.py speed 1.2
+
+Команда получает квитанцию от **действительного процесса Atlas**. По
+умолчанию CLI обращается только к публичному приложению и не читает память.
+Сценарий короткой живой демонстрации: [docs/LIVE_DEMO_RU.md](docs/LIVE_DEMO_RU.md).
+CLI не слушает микрофон; голосовой клиент сможет пользоваться командами
+только при доступном коннекторе/инструменте в его собственном режиме.
+
 ## Где что находится
 
 | Путь | Для чего |

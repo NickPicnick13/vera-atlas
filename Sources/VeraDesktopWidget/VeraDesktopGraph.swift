@@ -67,6 +67,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private var dualDisplayEnabled = UserDefaults.standard.bool(forKey: "veraAtlasDualDisplayEnabled")
     private static let dualDisplayNotice = Notification.Name(
         (Bundle.main.bundleIdentifier ?? "local.vera.desktop-widget") + ".set-dual-display")
+    // Fixed, local-only control surface for live presentation. All operations
+    // are idempotent and call the same handlers as the visible menu.
+    private static let liveControlNotice = Notification.Name(
+        (Bundle.main.bundleIdentifier ?? "local.vera.desktop-widget") + ".live-control")
+    private static let liveControlAckNotice = Notification.Name(
+        (Bundle.main.bundleIdentifier ?? "local.vera.desktop-widget") + ".live-control-ack")
     private var keyMonitor: Any?
     private var state: PanelState = .menubar
     private static let pinnedDefaultsKey = "communityAtlasWindowPinned"
@@ -115,6 +121,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(setDualDisplayFromNotice(_:)),
             name: Self.dualDisplayNotice, object: nil,
+            suspensionBehavior: .deliverImmediately)
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(applyLiveControl(_:)),
+            name: Self.liveControlNotice, object: nil,
             suspensionBehavior: .deliverImmediately)
         NotificationCenter.default.addObserver(self,
              selector: #selector(atlasDisplayArrangementChanged(_:)),
@@ -458,6 +468,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
         if !window.isVisible || window.isMiniaturized { showDesktopWindow() }
         refreshDualDisplay()
+    }
+
+    @objc private func applyLiveControl(_ notice: Notification) {
+        guard let option = notice.userInfo?["option"] as? String,
+              let input = notice.userInfo?["value"] as? NSNumber else { return }
+        let on = input.boolValue
+        switch option {
+        case "comets":
+            if showComets != on { toggleAtlasComets() }
+        case "idle-lines":
+            if showIdleLines != on { toggleIdleLines() }
+        case "work-lines":
+            if continuousWorkLines != on { toggleContinuousWorkLines() }
+        case "adaptive-shape":
+            if adaptiveShape != on { toggleAdaptiveShape() }
+        case "dual":
+            if dualDisplayEnabled != on { toggleDualDisplay() }
+        case "backdrop":
+            if desktopBackdrop != on { toggleDesktopBackdrop() }
+        case "screen":
+            guard let target = NSScreen.screens.first(where: { Self.displayID($0) == input.uint32Value })
+            else { return }
+            switchAtlasToDisplay(target, origin: "local-live-control")
+        case "speed":
+            let value = input.doubleValue
+            guard value.isFinite, (0...3).contains(value) else { return }
+            let slider = NSSlider(frame: .zero)
+            slider.minValue = 0
+            slider.maxValue = 3
+            slider.doubleValue = value
+            changeMotionSpeed(slider)
+        default:
+            return
+        }
+        let line = "atlas-live-control pid=\(ProcessInfo.processInfo.processIdentifier) option=\(option) value=\(input)\n"
+        FileHandle.standardError.write(Data(line.utf8))
+        if let requestID = notice.userInfo?["request_id"] as? String,
+           requestID.count <= 64 && !requestID.isEmpty {
+            DistributedNotificationCenter.default().post(
+                name: Self.liveControlAckNotice, object: nil,
+                userInfo: ["request_id": requestID, "option": option])
+        }
     }
 
     @objc private func toggleDualDisplay() {
