@@ -71,6 +71,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private var desktopBackdrop = false
     private var startupBackdropScreen: NSScreen?
     private static let backdropScreenDefaultsKey = "veraAtlasBackdropScreenID"
+    // Local-only control channel for exact-window QA and permitted automation.
+    private static let displaySelectionNotice = Notification.Name(
+        (Bundle.main.bundleIdentifier ?? "local.vera.desktop-widget") + ".select-display")
     private static func displayID(_ screen: NSScreen) -> UInt32? {
         (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }
@@ -100,6 +103,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             toggleDesktopBackdrop()
         }
         installMonitors()
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(chooseDisplayFromNotice(_:)),
+            name: Self.displaySelectionNotice, object: nil,
+            suspensionBehavior: .deliverImmediately)
         NotificationCenter.default.addObserver(self,
              selector: #selector(atlasDisplayArrangementChanged(_:)),
              name: NSApplication.didChangeScreenParametersNotification,
@@ -240,6 +247,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                                         action: #selector(toggleDesktopBackdrop), keyEquivalent: "")
             backdrop.target = self
             backdrop.state = desktopBackdrop ? .on : .off
+            if NSScreen.screens.count > 1 {
+                let switcher = menu.addItem(
+                    withTitle: "Перенести Atlas на другой монитор",
+                    action: #selector(cycleAtlasDisplay), keyEquivalent: "")
+                switcher.target = self
+                let displaySubmenu = NSMenu(title: "Выбрать монитор")
+                let picker = menu.addItem(withTitle: "Показать Atlas на экране", action: nil, keyEquivalent: "")
+                picker.submenu = displaySubmenu
+                let selectedID = UInt32(UserDefaults.standard.integer(forKey: Self.backdropScreenDefaultsKey))
+                let displays = NSScreen.screens.sorted { a,b in
+                    let mainID = CGMainDisplayID()
+                    if Self.displayID(a) == mainID { return true }
+                    if Self.displayID(b) == mainID { return false }
+                    return (Self.displayID(a) ?? 0) < (Self.displayID(b) ?? 0)
+                }
+                for display in displays {
+                    guard let displayID = Self.displayID(display) else { continue }
+                    let label = (displayID == CGMainDisplayID() ? "Основной — " : "Дополнительный — ")
+                        + display.localizedName
+                    let item = NSMenuItem(title: label, action: #selector(selectAtlasDisplayMenu(_:)),
+                                          keyEquivalent: "")
+                    item.target = self
+                    item.representedObject = NSNumber(value: displayID)
+                    item.state = selectedID == displayID ? .on : .off
+                    displaySubmenu.addItem(item)
+                }
+            }
             let lines = menu.addItem(withTitle: "Фоновые линии — старый вид",
                                      action: #selector(toggleIdleLines), keyEquivalent: "")
             lines.target = self; lines.state = showIdleLines ? .on : .off
@@ -379,6 +413,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let id = Self.displayID(target) ?? 0
         let marker = "atlas-backdrop-retarget pid=\(ProcessInfo.processInfo.processIdentifier) reason=\(reason) display=\(id) old=\(Int(oldFrame.width))x\(Int(oldFrame.height)) new=\(Int(targetFrame.width))x\(Int(targetFrame.height)) origin=\(Int(targetFrame.minX)),\(Int(targetFrame.minY))\n"
         FileHandle.standardError.write(Data(marker.utf8))
+    }
+
+    /// Move the existing WKWebView; no second renderer or model process is started.
+    private func switchAtlasToDisplay(_ target: NSScreen, origin: String) {
+        guard let window = panel as? AtlasWindow else { return }
+        if desktopBackdrop {
+            retargetBackdrop(to: target, reason: origin)
+        } else {
+            let old = window.frame
+            let next: NSRect
+            if window.fillsScreenFrame {
+                next = target.frame
+            } else {
+                let visible = target.visibleFrame
+                let proposed = NSRect(x: visible.midX-old.width/2,
+                                      y: visible.midY-old.height/2,
+                                      width: old.width, height: old.height)
+                next = normalFrameClampedToDisplay(proposed, relativeTo: window)
+            }
+            window.setFrame(next, display: true, animate: false)
+            if !window.fillsScreenFrame { persistOrdinaryGeometry(window) }
+            if let displayID = Self.displayID(target) {
+                UserDefaults.standard.set(Int(displayID), forKey: Self.backdropScreenDefaultsKey)
+            }
+            scheduleLayoutRead()
+        }
+        if !window.isVisible || window.isMiniaturized { showDesktopWindow() }
+    }
+
+    @objc private func cycleAtlasDisplay() {
+        guard NSScreen.screens.count > 1 else { return }
+        let current = UInt32(UserDefaults.standard.integer(forKey: Self.backdropScreenDefaultsKey))
+        let ordered = NSScreen.screens.sorted { a,b in
+            if Self.displayID(a) == CGMainDisplayID() { return true }
+            if Self.displayID(b) == CGMainDisplayID() { return false }
+            return (Self.displayID(a) ?? 0) < (Self.displayID(b) ?? 0)
+        }
+        let next = (ordered.firstIndex { Self.displayID($0) == current }).map { ($0+1)%ordered.count } ?? 0
+        switchAtlasToDisplay(ordered[next], origin: "menu-cycle")
+    }
+
+    @objc private func selectAtlasDisplayMenu(_ item: NSMenuItem) {
+        guard let id = (item.representedObject as? NSNumber)?.uint32Value,
+              let display = NSScreen.screens.first(where: { Self.displayID($0) == id }) else { return }
+        switchAtlasToDisplay(display, origin: "menu-select")
+    }
+
+    @objc private func chooseDisplayFromNotice(_ notification: Notification) {
+        guard let id = (notification.userInfo?["display_id"] as? NSNumber)?.uint32Value,
+              let display = NSScreen.screens.first(where: { Self.displayID($0) == id }) else { return }
+        switchAtlasToDisplay(display, origin: "local-display-select")
     }
 
     private func finishBackdropDrag(on destination: NSScreen?) {

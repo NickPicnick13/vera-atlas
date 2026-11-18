@@ -56,3 +56,19 @@ two attached displays, run the native selftest with the executable argument
 
 This selftest validates real AppKit screen selection and window geometry, not
 visible pixels. Verify the finished drag visually on each display.
+
+## Changing between Odyssey and Samsung without restarting
+
+A single Atlas app has one live window and GPU scene; it does not create
+two simultaneous replicas automatically. To switch without relaunching,
+right-click the Atlas icon in the menu bar and select either
+Move Atlas to the other display or the named screen under Show Atlas on display.
+This preserves the graph state and updates the persisted destination.
+Switching also works from the normal compact panel, centred on the target.
+
+For authorized local diagnostics (not a network service), the existing app
+listens for a local DistributedNotificationCenter notification named
+bundle-id.select-display containing a numeric display_id field. It validates
+the ID against connected monitors and invokes the same native switch action.
+No second app is started. Tests verified switching both directions using native
+window coordinates and a physical desktop capture before and after moving.

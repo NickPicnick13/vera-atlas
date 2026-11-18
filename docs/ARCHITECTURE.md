@@ -20,6 +20,13 @@ REAL, OPT-IN SOURCE                    LOCAL PROCESS                    APP
 
 The optional `vera_atlas_controller.py` checks the existing event bus against the WebKit JS acceptance receipts (`atlas-render-ack.json`). Its state lives in the existing skill-watch state, not a new database. An operator-supplied dispatcher callback may pass a confirmed incident to an existing foreman. The public build has **no default dispatcher**, cannot launch a model and does not claim to see uninstrumented ChatGPT calls. A JavaScript receipt is not proof of a physical pixel.
 
+The menu-bar display selector moves the existing AtlasWindow and WKWebView:
+it does not create another GPU renderer or process. It uses the same native
+target-screen retargeting as Command-drag, persists the destination display
+ID and triggers the page layout check. For authorized local computer-use QA, a
+bundle-name-scoped DistributedNotificationCenter message can request an actual
+connected display ID through the same path; arbitrary commands are not accepted.
+
 The app never launches a model. The demo emitter is an example **program** that truly runs, but its labels are **synthetic**, not an assertion of AI-provider work.
 
 ## Identity contract
