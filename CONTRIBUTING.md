@@ -18,3 +18,12 @@ New integrations should be opt-in and never change the main task's success or fa
 No third-party fonts or proprietary assets may be added without a separate rights review.
 
 **License:** MIT. Preserve copyright/license notices in copies and derivatives. See `LICENSE`.
+
+## Same-day public-source synchronization
+
+The canonical open-source repository is NickPicnick13/vera-atlas. Accepted
+updates to the personal Atlas should have corresponding *portable and
+privacy-reviewed* source, tests and documentation published promptly. Never
+mirror local memory graphs, personal credentials, session logs, hardcoded home
+directories or work-in-progress provider profiles to the public repository.
+A GitHub push is a release action, not an automatic copy of private data.

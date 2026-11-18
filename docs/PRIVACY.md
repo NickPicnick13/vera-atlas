@@ -31,3 +31,12 @@ Before pushing changes, inspect `git diff --cached` and `git ls-files`. Never ad
 This public version uses its own bundle identifier and preferences; installing it does not silently replace the original personal build.
 
 See also [SECURITY.md](../SECURITY.md).
+
+## Delivery receipts and controller
+
+The optional controller only compares opaque event IDs with an app-owned
+JavaScript-acceptance receipt. That small receipt is stored locally with
+owner-only permissions and limited to the most recent 512 IDs. It contains no
+raw filenames, prompts, chat messages, model responses or credentials. The
+controller's aggregate state reuses the watcher state file. No auto-dispatch
+or model invocation is configured in the public edition.

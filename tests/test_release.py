@@ -84,7 +84,8 @@ class PublicReleaseTests(unittest.TestCase):
     def test_no_private_assets(self):
         self.assertFalse((ROOT/"gsap.min.js").exists())
         self.assertFalse((ROOT/"PROJECT_CONTEXT.md").exists())
-        for part in ("atlas.js","sphere.js","make_app.sh","proto.html"):
+        for part in ("atlas.js","sphere.js","make_app.sh","proto.html",
+                     "scripts/vera_atlas_controller.py","scripts/vera_atlas_skill_watch.py"):
             content=(ROOT/part).read_text()
             self.assertNotIn("/Users/",content)
         native=(ROOT/"Sources/VeraDesktopWidget/AtlasLiveData.swift").read_text()

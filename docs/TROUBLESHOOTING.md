@@ -15,3 +15,21 @@
 **Performance issue?** Disable idle edges and persistent work edges, and reproduce on the synthetic graph. Include the OS version, CPU/GPU, browser backend and minimal **redacted** event sample in reports; never attach private desktop screenshots or chat logs.
 
 **Missing ChatGPT calls?** Direct ChatGPT skills or connector invocations have no universal hook. Only explicitly instrumented commands and confirmed reads are observable. Do not treat a missing pulse as evidence of model inactivity.
+
+## Comets do not reappear after changing the checkbox
+
+The comet and line-only styles are different draw paths, both tied to actual
+recorded edges. Disabling comets leaves a bright pulse on the exact visible
+segment; enabling them restores the 3D-projected glowing head and tail.
+
+If the checkbox changes line brightness but no comet appears, check that the
+latest JavaScript is **inside the app bundle** and that the app was restarted:
+
+```sh
+./make_app.sh
+cmp sphere.js .build/app/VeraAtlas.app/Contents/Resources/sphere.js
+node tests/atlas_comets_qa.js
+```
+
+Quit and reopen **only VeraAtlas.app**, not a separate AI runtime. An active
+event is needed to see a comet. This test does not alter display settings.

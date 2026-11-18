@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.0-rc.2] — 2026-11-18
+
+- Added the reversible **Comets over lines** menu option (off by default):
+  bright light pulses travel on the exact visible edge when off; the original
+  3D comet head and tail return when enabled.
+- Added a deterministic renderer test for both modes and restoration.
+- Added opaque WebKit JavaScript delivery receipts and optional controller
+  inspection in the existing passive observer, with no model calls by default.
+- Documented safe handoff hooks and clear limits: uninstrumented ChatGPT calls
+  and physical pixel visibility are not inferred.
+- Maintained the 4,506-node synthetic sample, separate app preferences and
+  opt-in source access; no personal graph or raw session data is shipped.
+
 ## [0.1.0-rc.1] — 2026-11-18
 
 First source release candidate for the public GitHub repository.

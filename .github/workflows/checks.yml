@@ -19,6 +19,8 @@ jobs:
         run: |
           node --check sphere.js
           node --check atlas.js
+      - name: Reversible comet animation test
+        run: node tests/atlas_comets_qa.js
       - name: Verify deterministic synthetic graph
         run: |
           python3 -B examples/generate_demo.py

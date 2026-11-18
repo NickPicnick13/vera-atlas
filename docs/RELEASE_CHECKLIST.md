@@ -37,3 +37,13 @@ The initial GitHub repository was created from the reviewed source index. Before
 ## Future release milestones
 
 Optional DSH adapter compatibility tests against public/synthetic session fixtures, signed distributable builds, accessibility pass, measurements with 50k+ synthetic nodes, more adapters for external process event sources, CI checks for secret patterns, more descriptive user-facing node labels without exposing source content.
+
+## Update policy — accepted local changes
+
+After a verified Atlas feature is accepted locally, update the audited public
+source in the same work cycle: compatible source + tests + RU/EN docs, run
+the public tests, review the staged diff and secret/path scan, then push to
+the existing main branch. Do **not** push the entire private workspace,
+generated graphs, sessions, memory, credentials or UI screenshots. If a private
+integration has no safe public equivalent, document its interface and keep
+private implementation outside GitHub. Confirm the remote SHA and CI result.

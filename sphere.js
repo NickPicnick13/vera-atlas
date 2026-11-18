@@ -359,6 +359,12 @@ function screenEdge(a,b,s) {
    return [p,q];
 }
 function stroke(c,p,q) { c.beginPath();c.moveTo(p.x,p.y);c.lineTo(q.x,q.y);c.stroke(); }
+// The visible edge is straight in SCREEN space. Nonlinear viewport fitting can
+// bend projection(lerp(3D)) away from the line; animate on this exact segment.
+function edgePoint(line,t) {
+   const p=line[0],q=line[1],f=clamp(t);
+   return {x:mix(p.x,q.x,f),y:mix(p.y,q.y,f),visible:p.visible&&q.visible};
+}
 class Sphere {
    constructor(canvas,{compact=false}={}) {
       this.el=canvas;this.c=canvas.getContext('2d');this.graph=buildGraph();this.focus=focusOf({},this.graph);
@@ -369,6 +375,7 @@ class Sphere {
       this.working=false;this.workStarted=0;this.traceMode='replay';this.returning=null;
       this.showIdleLines=false; // reversible visual experiment; graph edges remain intact
       this.showContinuousWorkLines=false; // default pulse-only while Harness runs
+      this.showComets=false; // reversible: moving line-pulse only, no separate glowing head
       this.adaptiveShape=true; // viewport fit of ORIGINAL sphere
       this.shapeMorph=0;this.shapeStamp=null;
       this.activeActorID=null; // verified active session ID from native DSH read-only state
@@ -618,18 +625,24 @@ class Sphere {
             const src=this.graph.byId.get(e.b).g==='src'&&this.graph.byId.get(e.a).g!=='src'?e.b:e.a;
             const leaf=src===e.a?e.b:e.a,a=world.get(src),b=world.get(leaf),line=screenEdge(a,b,s);if(!line)return;
             // The illuminated stroke is the very same projected segment as the normal graph edge.
-            c.globalAlpha=emit*.68;c.strokeStyle=this.traceState==='error'?'#ff7b94':this.traceState==='returned'?'#e6bd78':'#86b5ff';c.lineWidth=.76;stroke(c,...line);
+            c.globalAlpha=emit*(this.showComets?.68:.30);c.strokeStyle=this.traceState==='error'?'#ff7b94':this.traceState==='returned'?'#e6bd78':'#86b5ff';c.lineWidth=.76;stroke(c,...line);
             const t=Math.max(0,age-270-(i%5)*120),progress=reduced?.53:packet(t+270);
-            const dir=reduced?0:Math.sin(TAU*t/3000)<0?-1:1,head=projection(lerpPoint(a,b,progress),s);
+            const dir=reduced?0:Math.sin(TAU*t/3000)<0?-1:1;
+            // Two real display modes, not merely two opacity levels.
+            // Original comet travels in projected 3D; line-only pulse tracks
+            // the exact projected screen segment that the user sees.
+            const head=this.showComets?projection(lerpPoint(a,b,progress),s):edgePoint(line,progress);
             if(head.visible) {
                c.globalCompositeOperation='lighter';
                for(let j=8;j>=0;j--){
                   const d0=clamp(progress-dir*(j+1)*.019),d1=clamp(progress-dir*j*.019);
-                  if(d1===d0)continue;const x=projection(lerpPoint(a,b,d0),s),y=projection(lerpPoint(a,b,d1),s);
+                  if(d1===d0)continue;
+                  const x=this.showComets?projection(lerpPoint(a,b,d0),s):edgePoint(line,d0);
+                  const y=this.showComets?projection(lerpPoint(a,b,d1),s):edgePoint(line,d1);
                   if(!x.visible||!y.visible)continue;
-                  c.globalAlpha=emit*.55*(1-j/10);c.strokeStyle=this.traceState==='error'?'#ff728e':this.traceState==='returned'?'#ffcb65':'#82caff';c.lineWidth=1.33;stroke(c,x,y);
+                  c.globalAlpha=emit*(this.showComets?.55:.94)*(1-j/10);c.strokeStyle=this.traceState==='error'?'#ff728e':this.traceState==='returned'?'#ffcb65':'#82caff';c.lineWidth=this.showComets?1.33:2.0;stroke(c,x,y);
                }
-               c.globalAlpha=emit*.94;glow(c,this.traceState==='error'?this.red:this.traceState==='returned'?this.gold:this.sky,head,5.8);
+               if(this.showComets){c.globalAlpha=emit*.94;glow(c,this.traceState==='error'?this.red:this.traceState==='returned'?this.gold:this.sky,head,5.8);}
                c.globalCompositeOperation='source-over';signals.push({a:src,b:leaf,progress,x:head.x,y:head.y,dir});
             }
             beats.set(src,Math.max(beats.get(src)||0,1-5*progress));
@@ -685,5 +698,5 @@ class Sphere {
       this.lastView=view;return view;
    }
 }
-window.AtlasSphere={Sphere,buildGraph,focusOf,packet,envelope,cameraPoint,projection};
+window.AtlasSphere={Sphere,buildGraph,focusOf,packet,envelope,cameraPoint,projection,lerpPoint,screenEdge,edgePoint};
 })();

@@ -14,8 +14,10 @@ Vera Atlas is a transparent macOS menu-bar app with a GPU-rendered constellation
 - Desktop-background or floating panel, zoom, drag, rotation and per-user settings.
 - Panoramic ultrawide mode: circular-looking centre; extra space expands near the edges.
 - Toggle static edges / only show confirmed activity; adjustable rotation speed (0–3×).
+- **Comets over lines** switch: bright pulses follow the exact visible edge when off; the original 3D comet heads return when on (off by default).
 - Local, metadata-only event bus and persisted node identities.
 - Optional passive DeepSeek Harness observer and a Python event-emitter example.
+- Optional delivery controller: checks event IDs against JavaScript merge receipts, records gaps and can hand off to a separately configured repair callback. No model is started by default.
 - **Safe by default:** the first-run graph is reproducible **synthetic** data.
 
 ## Requirements
@@ -52,7 +54,7 @@ It is not a copy of your chat history or memory database.
 
 ## Control
 
-Right-click the menu-bar constellation icon to adjust window positioning, desktop background, idle edges, continuous-work edges, fit-to-screen geometry, zoom and **movement speed (0–3×)**. Left-click toggles the panel. Drag the graph to rotate; use scrolling to zoom and Shift+drag to pan. Settings are kept in the app's own macOS preferences domain (`org.vera-atlas.community`).
+Right-click the menu-bar constellation icon to adjust window positioning, desktop background, idle edges, continuous-work edges, fit-to-screen geometry, zoom, **movement speed (0–3×)** and **Comets over lines**. By default only bright on-edge pulses appear; check the comet option to restore its separate glowing head. Left-click toggles the panel. Drag the graph to rotate; use scrolling to zoom and Shift+drag to pan. Settings are kept in the app's own macOS preferences domain (`org.vera-atlas.community`).
 
 ## Connect real events
 
@@ -71,6 +73,7 @@ See [Integrations](docs/INTEGRATIONS.md) for commands and the exact data contrac
 python3 -B -m unittest discover -s tests -v
 node --check sphere.js
 node --check atlas.js
+node tests/atlas_comets_qa.js
 ./make_app.sh
 .build/app/VeraAtlas.app/Contents/MacOS/VeraAtlas --export-atlas-base
 ```

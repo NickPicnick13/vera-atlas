@@ -49,9 +49,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private static let workLinesDefaultsKey = "communityAtlasContinuousWorkLines"
     private static let adaptiveShapeDefaultsKey = "communityAtlasAdaptiveShapeEnabled"
     private static let motionSpeedDefaultsKey = "communityAtlasMotionSpeed"
+    private static let cometsDefaultsKey = "communityAtlasShowComets"
     private static let backdropDefaultsKey = "communityAtlasBackdropEnabled"
     private var showIdleLines = UserDefaults.standard.object(forKey: idleLinesDefaultsKey) as? Bool ?? false
     private var continuousWorkLines = UserDefaults.standard.object(forKey: workLinesDefaultsKey) as? Bool ?? false
+    private var showComets = UserDefaults.standard.object(forKey: cometsDefaultsKey) as? Bool ?? false
     private var adaptiveShape = UserDefaults.standard.object(forKey: adaptiveShapeDefaultsKey) as? Bool ?? true
     private var motionSpeed = min(3, max(0, UserDefaults.standard.object(forKey: motionSpeedDefaultsKey) as? Double ?? 1.0))
     private weak var motionSpeedTitle: NSTextField?
@@ -209,6 +211,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             let working = menu.addItem(withTitle: "Постоянные связи при работе модели",
                                         action: #selector(toggleContinuousWorkLines), keyEquivalent: "")
             working.target = self; working.state = continuousWorkLines ? .on : .off
+            let comet = menu.addItem(withTitle: "Кометы поверх линий", action: #selector(toggleAtlasComets), keyEquivalent: "")
+            comet.target = self; comet.state = showComets ? .on : .off
             let responsive = menu.addItem(withTitle: "Вписывать граф в экран",
                                           action: #selector(toggleAdaptiveShape), keyEquivalent: "")
             responsive.target = self; responsive.state = adaptiveShape ? .on : .off
@@ -353,6 +357,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         UserDefaults.standard.set(adaptiveShape, forKey: Self.adaptiveShapeDefaultsKey)
         webView?.evaluateJavaScript("window.__atlasSetAdaptiveShape?.(\(adaptiveShape ? "true" : "false"))")
         FileHandle.standardError.write(Data("atlas-adaptive-shape enabled=\(adaptiveShape)\n".utf8))
+    }
+    @objc private func toggleAtlasComets() {
+        showComets.toggle()
+        UserDefaults.standard.set(showComets, forKey: Self.cometsDefaultsKey)
+        webView?.evaluateJavaScript("window.__atlasSetComets?.(\(showComets ? "true" : "false"))")
     }
     @objc private func toggleContinuousWorkLines() {
         continuousWorkLines.toggle()
@@ -567,6 +576,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 self.webView?.evaluateJavaScript("window.__widgetState?.('\(self.pinned ? "pinned" : "panel")')")
                 self.webView?.evaluateJavaScript("window.__atlasSetIdleLines?.(\(self.showIdleLines ? "true" : "false"))")
                 self.webView?.evaluateJavaScript("window.__atlasSetContinuousWorkLines?.(\(self.continuousWorkLines ? "true" : "false"))")
+                self.webView?.evaluateJavaScript("window.__atlasSetComets?.(\(self.showComets ? "true" : "false"))")
                 self.webView?.evaluateJavaScript("window.__atlasSetAdaptiveShape?.(\(self.adaptiveShape ? "true" : "false"))")
                 self.webView?.evaluateJavaScript("window.__atlasSetMotionSpeed?.(\(self.motionSpeed))")
                 self.scheduleLayoutRead()

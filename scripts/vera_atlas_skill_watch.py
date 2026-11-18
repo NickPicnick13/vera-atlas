@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 from vera_atlas_access import new_access_id, record_access
+from vera_atlas_controller import cycle as controller_cycle
 
 HOME = Path.home()
 # Opt-in: no private DSH session scanning until a folder is explicitly set.
@@ -271,6 +272,7 @@ def run_once(dry_run: bool = False, files: list[Path] | None = None,
         files = list(SESSIONS.glob("*/**/session.v4.jsonl.zstd"))
     events = 0
     changes = 0
+    scan_failures = 0
     for path in files:
         try:
             st = path.stat()
@@ -312,7 +314,13 @@ def run_once(dry_run: bool = False, files: list[Path] | None = None,
                 events += 1
             state["cursors"][key] = {"sig": sig, "inode": st.st_ino, "seq": newest}
         except (OSError, RuntimeError, subprocess.TimeoutExpired):
+            scan_failures += 1
             continue
+    # Same watcher; controller has no model access without a separately supplied
+    # dispatcher callback. Fixture/dry-run scans cannot create incidents.
+    if live_scan and not dry_run:
+        if controller_cycle(state, failures=scan_failures):
+            changes += 1
     # Do not rewrite an unchanged cursor file every two seconds: low disk churn.
     if not dry_run and (changes > 0 or not state_path.exists()):
         temp = state_path.with_suffix(".tmp")

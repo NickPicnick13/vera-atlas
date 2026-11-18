@@ -25,6 +25,40 @@ final class AtlasLiveMonitor {
     private var workTraceStamp: String?
     private var previousReplayStamp: String?
     private var page = 0
+    private let deliveryStartMS = Int64(Date().timeIntervalSince1970 * 1000)
+    private var deliveryIDs: [String] = []
+    private let deliveryURL: URL = {
+        if let custom = ProcessInfo.processInfo.environment["VERA_ATLAS_DELIVERY_ACK_PATH"], !custom.isEmpty {
+            return URL(fileURLWithPath: custom)
+        }
+        return URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/Application Support/VeraAtlas/atlas-render-ack.json")
+    }()
+
+    // Acknowledges a JavaScript merge, not physical pixel visibility.
+    private func acknowledgeAtlasDelivery(_ keys: [String]) {
+        for key in keys {
+            let id = key.hasSuffix("-route") ? String(key.dropLast(6)) : key
+            guard id.range(of: #"^[0-9a-f]{32}$"#, options: .regularExpression) != nil else { continue }
+            if !deliveryIDs.contains(id) { deliveryIDs.append(id) }
+        }
+        if deliveryIDs.count > 512 { deliveryIDs = Array(deliveryIDs.suffix(512)) }
+        let payload: [String: Any] = [
+            "protocol": 1, "kind": "javascript_accepted",
+            "pid": Int(ProcessInfo.processInfo.processIdentifier),
+            "started_ms": deliveryStartMS,
+            "at_ms": Int64(Date().timeIntervalSince1970 * 1000),
+            "ids": deliveryIDs
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        do {
+            try FileManager.default.createDirectory(at: deliveryURL.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true, attributes: nil)
+            try data.write(to: deliveryURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: deliveryURL.path)
+        } catch { /* Render remains independent from receipt persistence. */ }
+    }
+
 
     init(atlas: AtlasLiveData) {
         self.atlas = atlas
@@ -35,6 +69,7 @@ final class AtlasLiveMonitor {
 
     func start() {
         guard timer == nil else { return }
+        acknowledgeAtlasDelivery([])
         let timer = Timer(timeInterval: 0.61, repeats: true) { [weak self] _ in self?.tick() }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
@@ -119,8 +154,9 @@ final class AtlasLiveMonitor {
             for (let i = 0; i < pulseCount; i++) window.__atlasMemoryAccess();
             if (deltas.length) {
                 const parsed = deltas.map(JSON.parse);
-                if (window.__mergeAtlasBatch) window.__mergeAtlasBatch(parsed);
-                else for (const delta of parsed) window.__mergeAtlasTrace(delta);
+                if (window.__mergeAtlasBatch) {
+                    if (!window.__mergeAtlasBatch(parsed)) return false;
+                } else for (const delta of parsed) window.__mergeAtlasTrace(delta);
             }
             return true;
             """, arguments: ["pulseCount": pulseCount, "deltas": deltas], in: nil, in: .page) { [weak self] result in
@@ -134,6 +170,7 @@ final class AtlasLiveMonitor {
                         FileHandle.standardError.write(Data(receipt.utf8))
                     }
                     for id in deltaIDs { self.pendingAccessDeltas.removeValue(forKey: id) }
+                    if !deltaIDs.isEmpty { self.acknowledgeAtlasDelivery(deltaIDs) }
                 }
             }
     }

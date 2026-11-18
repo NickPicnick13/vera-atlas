@@ -82,3 +82,38 @@ For a text document actually read successfully, `scripts/vera_atlas_chatgpt_read
 Every edge endpoint must exist, stable IDs should not contain private strings and weights must be finite. By default the build packages `examples/demo-graph.json`. Replacing it with a private graph requires an explicit local modification — **never commit your real memory data**.
 
 The publisher only shows events for the installed adapters, not every hidden operation of an external model.
+
+## Delivery controller (optional, no model calls)
+
+The event bus and the rendering layer are independent. A new WebKit delivery
+receipt acknowledges each 32-hex event ID **after the JavaScript graph merge**
+has been accepted. It cannot prove that a particular pixel was visible.
+Receipts contain only IDs, a process PID and timestamps, not prompts or paths.
+
+The public app writes the receipt to
+`~/Library/Application Support/VeraAtlas/atlas-render-ack.json`
+with mode 0600. An operator may override this path using
+`VERA_ATLAS_DELIVERY_ACK_PATH` when launching the **app**; event
+writers must use the same bus location as the app.
+
+The existing opt-in DeepSeek session watcher performs bounded delivery checks
+roughly every 30 seconds, storing one deduplicated incident in its **existing**
+`skill-watch-state.json`. To inspect without changing anything:
+
+```sh
+python3 -B scripts/vera_atlas_controller.py inspect
+python3 -B scripts/vera_atlas_controller.py status
+```
+
+The ""high_volume_unverifiable"" and ""ack_unavailable"" states are *unknown*,
+not fabricated successful deliveries. An actual dropped event produces a
+""delivery_gap"" status after a short grace period. The controller cannot infer
+uninstrumented ChatGPT calls: producers must emit genuine events first.
+
+**Repair handoff:** The public module provides an optional
+`cycle(state, dispatcher=callable)` hook, receiving only aggregate
+counts and an incident type. It never starts a model, repairs software, opens
+a socket or connects to anyone by default. An operator can connect this hook
+to their **existing** Harness foreman, with their own provider/approval checks.
+The private production setup has a separately configured foreman adapter; no
+credentials or private session identifiers are included in this repository.

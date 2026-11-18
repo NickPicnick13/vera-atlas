@@ -156,6 +156,11 @@ window.__atlasSetAdaptiveShape=enabled=>{
    chromeKey='';draw();request();
    return sphere.adaptiveShape;
 };
+window.__atlasSetComets=enabled=>{
+   sphere.showComets=(enabled===true);
+   chromeKey='';draw();request();
+   return sphere.showComets;
+};
 window.__atlasSetContinuousWorkLines=enabled=>{
    sphere.showContinuousWorkLines=(enabled===true);
    chromeKey='';draw();request();
@@ -164,6 +169,7 @@ window.__atlasSetContinuousWorkLines=enabled=>{
 window.__atlasWindowCommand=c=>{
    if(c==='lines-on'||c==='lines-off'){window.__atlasSetIdleLines(c==='lines-on');return;}
    if(c==='adaptive-on'||c==='adaptive-off'){window.__atlasSetAdaptiveShape(c==='adaptive-on');return;}
+   if(c==='comets-on'||c==='comets-off'){window.__atlasSetComets(c==='comets-on');return;}
    if(c==='work-lines-on'||c==='work-lines-off'){
       window.__atlasSetContinuousWorkLines(c==='work-lines-on');return;
    }
@@ -402,7 +408,7 @@ function snapshot() {
       camera:view.camera??null,hover:view.hover??null,graphEdges:view.graphEdges??sphere.graph.edges.length,
       backend:view.backend??'canvas2d',focalTranslation:view.focalTranslation??null,
       working:view.working,activity:view.activity,memoryPulse:view.memoryPulse,memoryAccessSequence:sphere.memoryAccessSequence,hit:sphere.hitArea(),
-      shapeMorph:view.shapeMorph,adaptiveShape:view.adaptiveShape,motionSpeed:sphere.motionSpeed,
+      shapeMorph:view.shapeMorph,adaptiveShape:view.adaptiveShape,motionSpeed:sphere.motionSpeed,comets:sphere.showComets,
       demo,reduced:view.reduced,graphNodes:sphere.graph.nodes.length,spin:{direction:sphere.spin.direction,speed:sphere.spin.speed,dragging:sphere.spin.dragging,yaw:sphere.pose.yaw,pitch:sphere.pose.pitch,angle:sphere.angle}}:
       {phase:'empty',focus:0,sphereZ:0,activeEdges:[],activeNodes:[],signals:[],volumePoints:0,ambientEdges:0,pulse:0,demo};
 }

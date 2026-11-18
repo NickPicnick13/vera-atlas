@@ -12,9 +12,13 @@ REAL, OPT-IN SOURCE                    LOCAL PROCESS                    APP
                          │  atlas_catalog + last 512 events
                          ↓
      AtlasLiveData.swift → AtlasLiveMonitor.swift → WKWebView
-                                                    │
+                          │                         │
+                    JS merge receipts ←──────────────┘
+                          │                         │
                                       atlas.js → sphere.js (WebGL/2D)
 ```
+
+The optional `vera_atlas_controller.py` checks the existing event bus against the WebKit JS acceptance receipts (`atlas-render-ack.json`). Its state lives in the existing skill-watch state, not a new database. An operator-supplied dispatcher callback may pass a confirmed incident to an existing foreman. The public build has **no default dispatcher**, cannot launch a model and does not claim to see uninstrumented ChatGPT calls. A JavaScript receipt is not proof of a physical pixel.
 
 The app never launches a model. The demo emitter is an example **program** that truly runs, but its labels are **synthetic**, not an assertion of AI-provider work.
 
@@ -42,7 +46,7 @@ Opaque IDs are generated in producer code. A stable model can have many simultan
 
 The Swift Package builds a menu-bar agent with AppKit, WKWebView and the bundled local HTML/JS. `AtlasLiveData` loads a deterministic **synthetic** seed from the app bundle. It can merge a persisted topology catalog derived from real events. `AtlasLiveMonitor` periodically polls the local file and sends metadata-only deltas into the WebView. The renderer uses WebGL where available and falls back to Canvas.
 
-On ultrawide monitors, centre geometry is isotropic; peripheral nodes acquire a progressively stronger lateral fit. The ordinary sphere view is still available. Idle edges and continuous-work edges are independent switches; work can pulse without inventing a specific route.
+On ultrawide monitors, centre geometry is isotropic; peripheral nodes acquire a progressively stronger lateral fit. The ordinary sphere view is still available. Idle edges and continuous-work edges are independent switches; work can pulse without inventing a specific route. The reversible **Comets over lines** option is off by default: the moving pulse uses linear interpolation of the very same projected line segment; turning it on restores the legacy 3D-projected glow head and tail.
 
 ## Event bus
 
