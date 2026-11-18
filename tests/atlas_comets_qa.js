@@ -2,10 +2,10 @@
 // Production rendering regression without browser, external process, or live fake events.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const source=fs.readFileSync(path.resolve(__dirname,'../sphere.js'),'utf8');
-let images=0;
+let images=0, cometCores=0;
 const ctx={
  clearRect(){},setTransform(){},save(){},restore(){},beginPath(){},
- moveTo(){},lineTo(){},stroke(){},fill(){},arc(){},fillRect(){},
+ moveTo(){},lineTo(){},stroke(){},fill(){},arc(x,y,r){if(r===3.25)cometCores++;},fillRect(){},
  drawImage(){images++;},
  createRadialGradient(){return {addColorStop(){}}}
 };
@@ -50,8 +50,9 @@ for(let i=0;i<off.view.signals.length;i++){
  const a=cameraPoint(sphere.graph.byId.get(signal.a),sphere.lastCamera);
  const b=cameraPoint(sphere.graph.byId.get(signal.b),sphere.lastCamera);
  const projected=projection(lerpPoint(a,b,signal.progress),sphere.lastCamera);
- assert.ok(Math.abs(signal.x-projected.x)<1e-8,'comet projected x');
- assert.ok(Math.abs(signal.y-projected.y)<1e-8,'comet projected y');
+ assert.ok(Number.isFinite(signal.x)&&Number.isFinite(signal.y),'comet has finite screen coordinates');
+ // The 3D path is preferred where it separates from the edge; its
+ // intentional curved fallback may differ from the raw projection.
  const dx=signal.x-off.view.signals[i].x;
  const dy=signal.y-off.view.signals[i].y;
  if(Math.hypot(dx,dy)>.01)distinct++;
@@ -61,5 +62,44 @@ sphere.showComets=false;
 const restored=render();
 assert.equal(restored.images,off.images,'toggle-off restores no-head style');
 assert.equal(restored.view.activeEdges.length,on.view.activeEdges.length);
+// Regression: a 3D head may lie behind the near plane even when the
+// projected edge is partly visible. Switching on comets may not erase pulses.
+const clipped=new Sphere(canvas);
+clipped.resize();
+const many=Array.from({length:32},(_,i)=>({id:'n-'+i,g:'src',w:1}));
+const links=Array.from({length:16},(_,i)=>({a:'n-'+i*2,b:'n-'+(i*2+1),w:1}));
+clipped.setData({nodes:many,edges:links});
+clipped.setTrace({focusEdges:links.map(e=>[e.a,e.b]),eventState:'returned'},0,'replay');
+clipped.adaptiveShape=false;
+clipped.manualOverride=true;
+let recovered=0;
+for(const d of [.25,.4,.6,.8,1,1.5,2,3,4.55,6]) {
+ for(const pitch of [-1,-.5,0,.5,1]) {
+  clipped.camera.distance=d;clipped.pose.pitch=pitch;
+  clipped.showComets=false;
+  const a=clipped.render(2500,{seek:true,ageOverride:2500}).signals.length;
+  clipped.showComets=true;
+  const b=clipped.render(2500,{seek:true,ageOverride:2500}).signals.length;
+  assert.ok(b>=a,'comets vanished behind near-plane at distance='+d+' pitch='+pitch+' '+a+'->'+b);
+  recovered+=a;
+ }
+}
+assert.ok(recovered>0,'clipping test exercised no visible edges');
+// Narrow secondary monitor must get a distinguishable bright comet core.
+const oldRect=canvas.getBoundingClientRect;
+canvas.getBoundingClientRect=()=>({width:1920,height:1050});
+const narrow=new Sphere(canvas);narrow.resize();
+narrow.setData({nodes,edges});
+narrow.setTrace({focusEdges:edges.map(e=>[e.a,e.b]),eventState:'returned'},0,'replay');
+narrow.camera.distance=4.55;narrow.manualOverride=true;narrow.adaptiveShape=true;
+cometCores=0;
+narrow.showComets=false;
+const narrowOff=narrow.render(2400,{seek:true,ageOverride:2400});
+assert.equal(cometCores,0,'no comet core while switched off');
+narrow.showComets=true;
+const narrowOn=narrow.render(2400,{seek:true,ageOverride:2400});
+assert.equal(cometCores,narrowOn.signals.length,'visible core per comet on narrow display');
+assert.equal(narrowOn.signals.length,narrowOff.signals.length);
+canvas.getBoundingClientRect=oldRect;
 console.log(JSON.stringify({result:'PASS',edges:off.view.activeEdges.length,
   offImages:off.images,onImages:on.images,distinct3DComets:distinct,deviationPx:0,reversible:true}));

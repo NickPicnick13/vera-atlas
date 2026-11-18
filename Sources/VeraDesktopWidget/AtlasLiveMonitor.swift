@@ -27,13 +27,7 @@ final class AtlasLiveMonitor {
     private var page = 0
     private let deliveryStartMS = Int64(Date().timeIntervalSince1970 * 1000)
     private var deliveryIDs: [String] = []
-    private let deliveryURL: URL = {
-        if let custom = ProcessInfo.processInfo.environment["VERA_ATLAS_DELIVERY_ACK_PATH"], !custom.isEmpty {
-            return URL(fileURLWithPath: custom)
-        }
-        return URL(fileURLWithPath: NSHomeDirectory())
-            .appendingPathComponent("Library/Application Support/VeraAtlas/atlas-render-ack.json")
-    }()
+    private let deliveryURL: URL
 
     // Acknowledges a JavaScript merge, not physical pixel visibility.
     private func acknowledgeAtlasDelivery(_ keys: [String]) {
@@ -60,8 +54,13 @@ final class AtlasLiveMonitor {
     }
 
 
-    init(atlas: AtlasLiveData) {
+    init(atlas: AtlasLiveData, receiptSuffix: String = "") {
         self.atlas = atlas
+        let userPath = ProcessInfo.processInfo.environment["VERA_ATLAS_DELIVERY_ACK_PATH"]
+            ?? NSHomeDirectory() + "/Library/Application Support/VeraAtlas/atlas-render-ack.json"
+        let base = URL(fileURLWithPath: userPath)
+        self.deliveryURL = receiptSuffix.isEmpty ? base
+            : URL(fileURLWithPath: base.deletingPathExtension().path + receiptSuffix + ".json")
         accessRevision = atlas.accessRevision
         accessTraceRevision = atlas.traceRevision
         accessCursor = atlas.latestAccessEventID()
@@ -87,6 +86,11 @@ final class AtlasLiveMonitor {
     }
 
     func detach() { view = nil; page += 1; memoryAccessJavaScriptInFlight = false }
+    func stop() {
+        detach()
+        timer?.invalidate()
+        timer = nil
+    }
 
     private func tick() {
         guard view != nil else { return }

@@ -34,6 +34,19 @@ git push origin main
 
 The initial GitHub repository was created from the reviewed source index. Before any future push, check `git status`, `git diff --cached`, `git ls-files` and `git remote -v`. Never push access logs, local builds, or real memory exports.
 
+## Two-renderer regression acceptance
+
+- Build and sign a native app with a second independent WKWebView.
+- Toggle the secondary renderer without restarting the primary.
+- Confirm both screens have native WebGL backends and receive the same real
+  event ID in separate JavaScript acknowledgement receipts.
+- Confirm comet mode is enabled at first paint and reports visible signals
+  on each renderer after a real event.
+- Test clipped-edge and narrow-viewport comet heads, including their solid
+  luminous cores. Confirm actual moving heads on the Samsung desktop using
+  two frames from the same real event. Reverse the switch to restore the
+  prior one-display behavior. Do not publish private screenshots or event logs.
+
 ## Future release milestones
 
 Optional DSH adapter compatibility tests against public/synthetic session fixtures, signed distributable builds, accessibility pass, measurements with 50k+ synthetic nodes, more adapters for external process event sources, CI checks for secret patterns, more descriptive user-facing node labels without exposing source content.

@@ -631,18 +631,58 @@ class Sphere {
             // Two real display modes, not merely two opacity levels.
             // Original comet travels in projected 3D; line-only pulse tracks
             // the exact projected screen segment that the user sees.
-            const head=this.showComets?projection(lerpPoint(a,b,progress),s):edgePoint(line,progress);
+            // Comet mode is a SEPARATE visible path, not the line pulse.
+            // A former fallback put the 3D head directly ON the edge whenever
+            // the projection was clipped: it made comets look absent.
+            // Preserve the true 3D projection when visibly separated; use
+            // a bounded arc alongside the real edge otherwise.
+            const edgeDX=line[1].x-line[0].x,edgeDY=line[1].y-line[0].y;
+            const edgeLength=Math.max(1,Math.hypot(edgeDX,edgeDY));
+            // A 1920-wide secondary display packs the same graph into a
+            // narrower viewport. Keep comet heads distinguishable from the
+            // illuminated edge; the ultrawide Odyssey appearance is unchanged.
+            const narrowComet=w/h<2.3;
+            const cometPoint=t=>{
+               const straight=edgePoint(line,t);
+               const projected=projection(lerpPoint(a,b,t),s);
+               const visible=projected.visible && Number.isFinite(projected.x) &&
+                  Number.isFinite(projected.y) &&
+                  projected.x>=-5 && projected.x<=w+5 &&
+                  projected.y>=-5 && projected.y<=h+5;
+               const arc=Math.sin(Math.PI*clamp(t))*Math.min(
+                  narrowComet?52:32,Math.max(narrowComet?26:11,edgeLength*(narrowComet?.20:.13)));
+               const signed=visible?
+                  (edgeDX*(projected.y-straight.y)-edgeDY*(projected.x-straight.x))/edgeLength:0;
+               if(visible&&Math.abs(signed)>=arc)return projected;
+               const side=Math.abs(signed)>.5?Math.sign(signed):(i%2?1:-1);
+               const missing=visible?Math.max(0,arc-Math.abs(signed)):arc;
+               return {x:(visible?projected.x:straight.x)-edgeDY/edgeLength*side*missing,
+                       y:(visible?projected.y:straight.y)+edgeDX/edgeLength*side*missing,
+                       visible:straight.visible};
+            };
+            const head=this.showComets?cometPoint(progress):edgePoint(line,progress);
             if(head.visible) {
                c.globalCompositeOperation='lighter';
                for(let j=8;j>=0;j--){
                   const d0=clamp(progress-dir*(j+1)*.019),d1=clamp(progress-dir*j*.019);
                   if(d1===d0)continue;
-                  const x=this.showComets?projection(lerpPoint(a,b,d0),s):edgePoint(line,d0);
-                  const y=this.showComets?projection(lerpPoint(a,b,d1),s):edgePoint(line,d1);
+                  const x=this.showComets?cometPoint(d0):edgePoint(line,d0);
+                  const y=this.showComets?cometPoint(d1):edgePoint(line,d1);
                   if(!x.visible||!y.visible)continue;
-                  c.globalAlpha=emit*(this.showComets?.55:.94)*(1-j/10);c.strokeStyle=this.traceState==='error'?'#ff728e':this.traceState==='returned'?'#ffcb65':'#82caff';c.lineWidth=this.showComets?1.33:2.0;stroke(c,x,y);
+                  c.globalAlpha=emit*(this.showComets?.55:.94)*(1-j/10);c.strokeStyle=this.traceState==='error'?'#ff728e':this.traceState==='returned'?'#ffcb65':'#82caff';c.lineWidth=this.showComets?(narrowComet?2.35:1.65):2.0;stroke(c,x,y);
                }
-               if(this.showComets){c.globalAlpha=emit*.94;glow(c,this.traceState==='error'?this.red:this.traceState==='returned'?this.gold:this.sky,head,5.8);}
+               if(this.showComets){
+                  c.globalAlpha=emit*.94;
+                  glow(c,this.traceState==='error'?this.red:this.traceState==='returned'?this.gold:this.sky,head,narrowComet?14:9.0);
+                  if(narrowComet){
+                     // A crisp visible core survives a bright narrow-screen
+                     // trace; sprite-only heads were lost against the line.
+                     c.globalAlpha=emit*.93;
+                     c.fillStyle=this.traceState==='error'?'#ffe7e8':
+                        this.traceState==='returned'?'#fff8df':'#effaff';
+                     c.beginPath();c.arc(head.x,head.y,3.25,0,TAU);c.fill();
+                  }
+               }
                c.globalCompositeOperation='source-over';signals.push({a:src,b:leaf,progress,x:head.x,y:head.y,dir});
             }
             beats.set(src,Math.max(beats.get(src)||0,1-5*progress));

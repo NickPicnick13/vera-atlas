@@ -62,6 +62,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     private var statusItem: NSStatusItem?
     private var panel: NSWindow?
     private var webView: WKWebView?
+    private lazy var twin = AtlasTwinView(atlas: atlas)
+    private static let dualDisplayDefaultsKey = "veraAtlasDualDisplayEnabled"
+    private var dualDisplayEnabled = UserDefaults.standard.bool(forKey: "veraAtlasDualDisplayEnabled")
+    private static let dualDisplayNotice = Notification.Name(
+        (Bundle.main.bundleIdentifier ?? "local.vera.desktop-widget") + ".set-dual-display")
     private var keyMonitor: Any?
     private var state: PanelState = .menubar
     private static let pinnedDefaultsKey = "communityAtlasWindowPinned"
@@ -106,6 +111,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(chooseDisplayFromNotice(_:)),
             name: Self.displaySelectionNotice, object: nil,
+            suspensionBehavior: .deliverImmediately)
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(setDualDisplayFromNotice(_:)),
+            name: Self.dualDisplayNotice, object: nil,
             suspensionBehavior: .deliverImmediately)
         NotificationCenter.default.addObserver(self,
              selector: #selector(atlasDisplayArrangementChanged(_:)),
@@ -248,6 +257,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             backdrop.target = self
             backdrop.state = desktopBackdrop ? .on : .off
             if NSScreen.screens.count > 1 {
+                let dual = menu.addItem(
+                    withTitle: "На обоих мониторах — два полноценных Atlas",
+                    action: #selector(toggleDualDisplay), keyEquivalent: "")
+                dual.target = self
+                dual.state = dualDisplayEnabled ? .on : .off
+
                 let switcher = menu.addItem(
                     withTitle: "Перенести Atlas на другой монитор",
                     action: #selector(cycleAtlasDisplay), keyEquivalent: "")
@@ -378,6 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         if !window.isVisible { window.orderFrontRegardless() }
         UserDefaults.standard.set(desktopBackdrop, forKey: Self.backdropDefaultsKey)
         scheduleLayoutRead()
+        refreshDualDisplay()
         let receipt = "atlas-desktop-backdrop pid=\(ProcessInfo.processInfo.processIdentifier) enabled=\(desktopBackdrop) level=\(window.level.rawValue) size=\(Int(window.frame.width))x\(Int(window.frame.height))\n"
         FileHandle.standardError.write(Data(receipt.utf8))
     }
@@ -410,6 +426,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             UserDefaults.standard.set(Int(id), forKey: Self.backdropScreenDefaultsKey)
         }
         scheduleLayoutRead()
+        refreshDualDisplay()
         let id = Self.displayID(target) ?? 0
         let marker = "atlas-backdrop-retarget pid=\(ProcessInfo.processInfo.processIdentifier) reason=\(reason) display=\(id) old=\(Int(oldFrame.width))x\(Int(oldFrame.height)) new=\(Int(targetFrame.width))x\(Int(targetFrame.height)) origin=\(Int(targetFrame.minX)),\(Int(targetFrame.minY))\n"
         FileHandle.standardError.write(Data(marker.utf8))
@@ -440,6 +457,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             scheduleLayoutRead()
         }
         if !window.isVisible || window.isMiniaturized { showDesktopWindow() }
+        refreshDualDisplay()
+    }
+
+    @objc private func toggleDualDisplay() {
+        dualDisplayEnabled.toggle()
+        UserDefaults.standard.set(dualDisplayEnabled, forKey: Self.dualDisplayDefaultsKey)
+        refreshDualDisplay()
+    }
+
+    @objc private func setDualDisplayFromNotice(_ notification: Notification) {
+        guard let enabled = notification.userInfo?["enabled"] as? NSNumber else { return }
+        dualDisplayEnabled = enabled.boolValue
+        UserDefaults.standard.set(dualDisplayEnabled, forKey: Self.dualDisplayDefaultsKey)
+        refreshDualDisplay()
+    }
+
+    private func refreshDualDisplay() {
+        guard dualDisplayEnabled, webReady, let main = panel, main.isVisible,
+              !main.isMiniaturized,
+              let current = screen(for: main.frame, relativeTo: main),
+              let secondary = NSScreen.screens.first(where: { Self.displayID($0) != Self.displayID(current) })
+        else { twin.stop(); return }
+        let settings = AtlasTwinView.Settings(
+            idleLines: showIdleLines, continuousWorkLines: continuousWorkLines,
+            comets: showComets, adaptiveShape: adaptiveShape, motionSpeed: motionSpeed)
+        twin.show(on: secondary, fullscreen: desktopBackdrop ||
+                    (main as? AtlasWindow)?.fillsScreenFrame == true,
+                  normalSize: savedContentSize(), settings: settings)
     }
 
     @objc private func cycleAtlasDisplay() {
@@ -511,6 +556,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     @objc private func toggleIdleLines() {
         showIdleLines.toggle()
+        refreshDualDisplay()
         UserDefaults.standard.set(showIdleLines, forKey: Self.idleLinesDefaultsKey)
         webView?.evaluateJavaScript("window.__atlasSetIdleLines?.(\(showIdleLines ? "true" : "false"))")
         FileHandle.standardError.write(Data("atlas-idle-lines enabled=\(showIdleLines)\n".utf8))
@@ -523,22 +569,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         motionSpeed = (min(3, max(0, sender.doubleValue)) * 10).rounded() / 10
         sender.doubleValue = motionSpeed
         motionSpeedTitle?.stringValue = motionSpeedText()
+        refreshDualDisplay()
         UserDefaults.standard.set(motionSpeed, forKey: Self.motionSpeedDefaultsKey)
         webView?.evaluateJavaScript("window.__atlasSetMotionSpeed?.(\(motionSpeed))")
     }
     @objc private func toggleAdaptiveShape() {
         adaptiveShape.toggle()
+        refreshDualDisplay()
         UserDefaults.standard.set(adaptiveShape, forKey: Self.adaptiveShapeDefaultsKey)
         webView?.evaluateJavaScript("window.__atlasSetAdaptiveShape?.(\(adaptiveShape ? "true" : "false"))")
         FileHandle.standardError.write(Data("atlas-adaptive-shape enabled=\(adaptiveShape)\n".utf8))
     }
     @objc private func toggleAtlasComets() {
         showComets.toggle()
+        refreshDualDisplay()
         UserDefaults.standard.set(showComets, forKey: Self.cometsDefaultsKey)
         webView?.evaluateJavaScript("window.__atlasSetComets?.(\(showComets ? "true" : "false"))")
     }
     @objc private func toggleContinuousWorkLines() {
         continuousWorkLines.toggle()
+        refreshDualDisplay()
         UserDefaults.standard.set(continuousWorkLines, forKey: Self.workLinesDefaultsKey)
         webView?.evaluateJavaScript("window.__atlasSetContinuousWorkLines?.(\(continuousWorkLines ? "true" : "false"))")
         FileHandle.standardError.write(Data("atlas-work-lines enabled=\(continuousWorkLines)\n".utf8))
@@ -585,6 +635,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         if p.isMiniaturized { p.deminiaturize(nil) }
         p.orderFrontRegardless()
         scheduleLayoutRead()
+        refreshDualDisplay()
     }
 
     private func windowDidReappearInBackdrop() {
@@ -594,6 +645,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         window.ignoresMouseEvents = false
         window.snapAcrossDisplays = true
         window.orderFrontRegardless()
+        refreshDualDisplay()
     }
 
     func windowDidMove(_ notification: Notification) {
@@ -728,6 +780,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     /// «Свернуть» / повторный клик по иконке: панель уходит, остаётся только иконка в меню-баре.
     @objc func collapsePanel() {
         panel?.orderOut(nil)
+        twin.stop()
         state = .menubar
         updateStatusIcon()
     }
@@ -747,9 +800,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let trace = atlas.lastReplayTrace()
         guard let initial = atlas.payload(trace: trace) else { return }
         let revision = pageRevision
-        webView.callAsyncJavaScript("return !!window.__setAtlasData && (window.__setAtlasData(JSON.parse(packet)), true);",
-                                    arguments: ["packet": initial], in: nil, in: .page) { [weak self] result in
-            guard let self, revision == self.pageRevision else { return }
+        webView.callAsyncJavaScript("""
+            if (!window.__setAtlasData || !window.__atlasSetComets) return false;
+            window.__atlasSetComets(cometsOn);
+            window.__setAtlasData(JSON.parse(packet));
+            return true;
+            """, arguments: ["packet": initial, "cometsOn": showComets],
+            in: nil, in: .page) { [weak self, weak webView] result in
+            guard let self, let webView, revision == self.pageRevision else { return }
             if case .success(let value) = result, value as? Bool == true {
                 self.webReady = true
                 self.webView?.evaluateJavaScript("window.__widgetState?.('\(self.pinned ? "pinned" : "panel")')")
@@ -760,6 +818,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 self.webView?.evaluateJavaScript("window.__atlasSetMotionSpeed?.(\(self.motionSpeed))")
                 self.scheduleLayoutRead()
                 self.liveMonitor.attach(webView, replayStamp: trace?["timestamp"] as? String)
+                self.refreshDualDisplay()
+                for delay in [3.0, 7.0] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak webView] in
+                        guard let self, let webView, self.webView === webView else { return }
+                        webView.evaluateJavaScript("window.__atlasMotionStatus?.()") { value, error in
+                            let line = "atlas-motion-check role=primary pid=\(ProcessInfo.processInfo.processIdentifier) delay=\(delay) state=\(String(describing: value)) error=\(String(describing: error))\n"
+                            FileHandle.standardError.write(Data(line.utf8))
+                        }
+                    }
+                }
             } else {
                 FileHandle.standardError.write(Data("atlas-initial-graph-not-applied\n".utf8))
             }
@@ -799,6 +867,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         webReady = false
         paintedOnSince = nil
         liveMonitor.detach()
+        twin.stop()
         pageRevision += 1
     }
 
@@ -835,7 +904,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             let graphEdges = (fields?["graphEdges"] as? NSNumber)?.intValue ?? 0
             let backend = fields?["backend"] as? String == "webgl" ? "webgl" : "canvas"
             let pid = ProcessInfo.processInfo.processIdentifier
-            FileHandle.standardError.write(Data("atlas-topology-ready pid=\(pid) nodes=\(nodes) graphEdges=\(graphEdges) selectedLinks=\(links) backend=\(backend)\n".utf8))
+            let comets = fields?["cometsEnabled"] as? Bool ?? false
+            let signals = (fields?["cometSignals"] as? NSNumber)?.intValue ?? 0
+            FileHandle.standardError.write(Data("atlas-topology-ready pid=\(pid) nodes=\(nodes) graphEdges=\(graphEdges) selectedLinks=\(links) backend=\(backend) comets=\(comets) signals=\(signals)\n".utf8))
         case "resizeWindow":
             guard let w = panel as? AtlasWindow, w.isVisible,
                   let dx = (fields?["dx"] as? NSNumber)?.doubleValue, let dy = (fields?["dy"] as? NSNumber)?.doubleValue,

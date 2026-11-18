@@ -55,6 +55,26 @@ The Swift Package builds a menu-bar agent with AppKit, WKWebView and the bundled
 
 On ultrawide monitors, centre geometry is isotropic; peripheral nodes acquire a progressively stronger lateral fit. A Command-drag of the desktop-background window selects the **destination by cursor position at mouse release**. AppKit refits the window to that display's visible frame (not the original monitor dimensions), triggers WebKit layout readback, persists the display ID and preserves an ordinary-size restore frame on the destination. Display-arrangement changes revalidate the selected screen. The ordinary sphere view is still available. Idle edges and continuous-work edges are independent switches; work can pulse without inventing a specific route. The reversible **Comets over lines** option is off by default: the moving pulse uses linear interpolation of the very same projected line segment; turning it on restores the legacy 3D-projected glow head and tail.
 
+### Independent two-display rendering
+
+The dual-display checkbox creates a second borderless AtlasWindow and a new
+WKWebView with its **own live WebGL scene**, not an NSImageView or snapshot.
+Each view starts its own passive AtlasLiveMonitor against the same event
+source and data model, so real graph activity reaches both. Each writes a
+separate opaque acknowledgement receipt (atlas-render-ack.json and
+atlas-render-ack-twin.json, respectively). Visual settings are synchronized
+from the menu, including comet mode and motion speed. Turning the mode off
+stops the secondary monitor, removes its handler and releases its window.
+No auto-throttling, artificial FPS reduction, duplicate model or second
+app process is involved.
+
+The first paint applies the saved comet mode before initializing the graph.
+When a 3D comet head projects behind the camera near plane or visually
+merges into a narrow viewport's highlighted edge, the renderer uses a bounded
+adjacent arc rather than suppressing the head. The 1920x1050 path gains a
+luminous core and stronger glow while the 3840-wide native style is retained.
+The deterministic clipping and narrow-viewport regressions cover this.
+
 ## Event bus
 
 `scripts/vera_atlas_access.py` is the supported local writer. It validates operations and IDs, uses a file lock, limits event history and persists topology in a catalog row. The file is created with mode 0600.

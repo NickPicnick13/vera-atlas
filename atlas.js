@@ -7,6 +7,7 @@ const canvas = $('graph'), sphere = new AtlasSphere.Sphere(canvas,{compact:embed
 const reduced = matchMedia('(prefers-reduced-motion: reduce)'), native = window.webkit?.messageHandlers?.widget;
 const localClock = new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 let trace=null,signature=null,lastSelection=null,graph={},view=null,frameID=0,endTimer=0,clockTimer=0;
+let atlasDraws=0, atlasLastDrawMS=0;
 let lastDraw=-Infinity,lastFrame=0,testing=false,seekAge=0,demo=false,ready=false,hasFocus=false;
 let chromeKey='',readySent=false,focusSent=false,workEpoch=null,paintKey='';
 let lastRegion='';
@@ -51,6 +52,7 @@ function info() {
    $('note').textContent=ready?'':'Жду данные графа';
 }
 function draw(at=performance.now()) {
+   atlasDraws++;atlasLastDrawMS=at;
    view=sphere.render(at,{reduced:reduced.matches,...(testing?{seek:true,ageOverride:seekAge,angle:seekAge*.00009}:{})});
    info();
    if(embedded&&native&&!inspect&&ready&&view){
@@ -69,7 +71,8 @@ function draw(at=performance.now()) {
       if (view.focus>.85&&view.signals.length) focusSent=true;
       native.postMessage({action:'sphereReady',renderer:'topology',nodes:sphere.graph.nodes.length,
          selectedLinks:focusSent?view.activeEdges.length:0,
-         graphEdges:view.graphEdges??sphere.graph.edges.length,backend:view.backend??'canvas2d'});
+         graphEdges:view.graphEdges??sphere.graph.edges.length,backend:view.backend??'canvas2d',
+         cometsEnabled:sphere.showComets===true,cometSignals:view.signals.length});
    }
 }
 function frame(at) {
@@ -119,6 +122,12 @@ function setData(data,illustration=false) {
    if(!embedded&&graph.trace)applyTrace(graph.trace);
    draw();request();
 }
+window.__atlasMotionStatus=()=>({
+    hidden:document.hidden, visibility:document.visibilityState, draws:atlasDraws,
+    sinceLastDraw:Math.round(performance.now()-atlasLastDrawMS), rafPending:!!frameID,
+    ready, comets:sphere.showComets, signals:view?.signals?.length||0,
+    working:!!sphere.working, phase:view?.phase||null, width:innerWidth, height:innerHeight
+});
 window.__setAtlasData=d=>setData(d,false);
 window.__applyTrace=t=>applyTrace(t);
 window.__setAtlasActivity=({running=false,epoch=null,actorID=null}={})=>{

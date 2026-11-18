@@ -58,6 +58,16 @@ It is not a copy of your chat history or memory database.
 
 Right-click the menu-bar constellation icon to adjust window positioning, desktop background, idle edges, continuous-work edges, fit-to-screen geometry, zoom, **movement speed (0–3×)** and **Comets over lines**. By default only bright on-edge pulses appear; check the comet option to restore its separate glowing head. Left-click toggles the panel. Drag the graph to rotate; use scrolling to zoom and Shift+drag to pan. Settings are kept in the app's own macOS preferences domain (`org.vera-atlas.community`).
 
+**Two equal Atlas views:** right-click the menu-bar icon and tick
+**"On both displays — two full Atlas views"**. This creates a separate live
+WKWebView/WebGL renderer on the other connected monitor. Both run original
+animation and process the same verified event stream independently, not a
+delayed image mirror. Untick to stop and release the secondary renderer.
+The mode uses extra GPU and RAM, without imposing automatic quality caps.
+Ordinary one-screen switching remains available. On narrower screens comet
+heads receive a brighter core and wider spatial offset from highlighted lines,
+so they remain perceptible. The ultrawide display appearance is unchanged.
+
 ## Connect real events
 
 The public edition deliberately does **not** scan your memory folders, session history or secrets on install. You may opt in to selected sources:

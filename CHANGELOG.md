@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.0-rc.3] — 2026-11-18
+
+- Added the optional **two full-quality Atlas displays** mode: two independent
+  WKWebView/WebGL scenes on separate monitors, each processing real events.
+  No snapshots, mirrored frames, automatic FPS limits, or GPU throttling.
+  A single menu checkbox starts/stops only the secondary renderer.
+- Fixed narrow-screen Samsung comet visibility: where the 3D path visually
+  overlaps the bright route, add a clearly separated comet arc, stronger glow
+  and small luminous core. Ultrawide appearance remains unchanged. A true
+  3D path remains primary where visibly distinct. Added a 1920x1050 test
+  alongside the near-plane and reversible-mode regressions.
+- Apply saved comet mode *before* the first graph paint, on both displays.
+  Added renderer diagnostics: comet enablement and visible signal count.
+- Keep separate per-renderer event receipts without altering private data.
+
 ## [0.1.0-rc.2] — 2026-11-18
 
 - Added the reversible **Comets over lines** menu option (off by default):

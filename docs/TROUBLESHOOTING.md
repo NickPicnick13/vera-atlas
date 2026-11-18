@@ -34,6 +34,25 @@ node tests/atlas_comets_qa.js
 Quit and reopen **only VeraAtlas.app**, not a separate AI runtime. An active
 event is needed to see a comet. This test does not alter display settings.
 
+## Comets disappear when a second Atlas is enabled
+
+In the two-display mode, both are independently rendered WebGL scenes and
+each reads the saved "Comets over lines" setting. The first graph paint
+applies that setting immediately; the live diagnostic receives the
+cometsEnabled flag and the visible cometSignals count from each view.
+A former near-plane projection bug could drop the glow head while the
+clipped line remained visible. This is fixed by a bounded offset from the visible edge and a luminous
+core on narrow displays when the head would otherwise merge with the line.
+The ultrawide animation is left unchanged. Run:
+
+    node tests/atlas_comets_qa.js
+
+The deterministic regression checks 50 camera poses and the narrow
+1920x1050 display, verifying separate illuminated comet heads and that
+switching comet mode does not erase visible pulses. Active
+comets still require actual traced graph links; inactive graphs do not show
+fictional motion.
+
 ## Atlas disappears after moving it to another display
 
 The previous desktop-background window retained the primary display's width.
@@ -59,8 +78,8 @@ visible pixels. Verify the finished drag visually on each display.
 
 ## Changing between Odyssey and Samsung without restarting
 
-A single Atlas app has one live window and GPU scene; it does not create
-two simultaneous replicas automatically. To switch without relaunching,
+In single-display mode, Atlas has one live window and GPU scene. The optional
+dual-display setting creates a second full WKWebView/WebGL scene. To switch without relaunching,
 right-click the Atlas icon in the menu bar and select either
 Move Atlas to the other display or the named screen under Show Atlas on display.
 This preserves the graph state and updates the persisted destination.
