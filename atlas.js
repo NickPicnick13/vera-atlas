@@ -23,7 +23,7 @@ function example() {
    return {nodes,edges,trace:{ts:'example',focusEdges,selected:[{id:'demo-38',source:'ideas'}]}};
 }
 function describe(t) {
-   const labels=[[/skysight/,'История компьютера'],[/session/,'Запись разговора'],[/ideas/,'Журнал идей'],[/lightrag/,'Граф документов'],[/graphify/,'Граф кода'],[/temporal/,'Хронология'],[/telegram|tg-private/,'Переписка'],[/obsidian|note/,'Заметки'],[/soroka/,'Короткие заметки'],[/palace/,'Архив памяти']];
+   const labels=[[/skysight/,'История компьютера'],[/session/,'Запись разговора'],[/ideas/,'Журнал идей'],[/lightrag/,'Граф документов'],[/graphify/,'Граф кода'],[/temporal/,'Хронология'],[/telegram|tg-private/,'Переписка'],[/obsidian|note/,'Заметки'],[/archive-index/,'Короткие заметки'],[/palace/,'Архив памяти']];
    const sources=new Set((t?.selected||[]).map(s=>s?.id).filter(Boolean));
    if (sources.size>1) return `${sources.size} ${sources.size===2||sources.size===3||sources.size===4?'источника':'источников'}`;
    const category=String(t?.selected?.[0]?.source||'');
@@ -228,7 +228,7 @@ $('replay').addEventListener('click',()=>{
    // Replay only re-runs the previous nonempty trace; the graph itself is not rebuilt.
    if(lastSelection&&!sphere.working)applyTrace(lastSelection,{force:true});
 });
-// A single memory operation often generates several real events (VeraCore ->
+// A single memory operation often generates several real events (installed skill entry ->
 // adapter -> selected document chunks). Do not let the last arriving event
 // erase the other paths before the user sees them. Only merge actual graph
 // edges observed within a short live window; never invent document access.

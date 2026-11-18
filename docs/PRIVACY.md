@@ -22,6 +22,12 @@ The renderer sees only sanitized graph topology and event deltas. The applicatio
 
 ### Optional integrations
 
+Public source routes use generic categories rather than names of a
+developer's personal memory systems. This edition does not encode a fixed
+personal home, workspace, document or project tree. File-level observation
+requires separately configured document/project roots and skips filenames
+or directory components that suggest credentials or secrets.
+
 Native DSH observation is **off by default**. To enable it, the operator must explicitly provide session/skill folder paths to the watcher; optional Desktop API status also needs an explicit workspace and secret-file path. Those configuration values remain on the user's machine, not in the repo. No API key is bundled or generated.
 
 ### Safe sharing

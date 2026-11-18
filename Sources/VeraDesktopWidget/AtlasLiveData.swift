@@ -188,10 +188,10 @@ struct AtlasLiveData {
 
     // Verified reader -> document routes, not simulated semantic connections.
     private static let routes: [[String]] = [
-        ["d-vera-core","d-reader"],["d-reader","d-canon"],
+        ["d-skill-entry","d-reader"],["d-reader","d-canon"],
         ["d-reader","d-protocol"],["d-reader","d-index"],
-        ["d-reader","d-flash"],["d-reader","d-soroka"],
-        ["d-reader","d-mempalace"],["d-reader","d-knowledge-graph"],
+        ["d-reader","d-flash"],["d-reader","d-archive-index"],
+        ["d-reader","d-archive-store"],["d-reader","d-knowledge-graph"],
         ["d-canon","d-node-memory"],["d-canon","d-node-journal"],
         ["d-canon","d-node-routes"],["d-canon","d-node-models"],
         ["d-canon","d-node-dsh"],["d-canon","d-node-learning"]
@@ -212,14 +212,14 @@ struct AtlasLiveData {
         // DSH skill catalog is discovered at launch, not copied into another index.
         // The ID is a hash of the skill's directory name; no paths or skill texts
         // are sent to the web scene. Do not treat catalog presence as a usage event.
-        // ChatGPT's VeraCore skill is a separate installed entry point,
+        // ChatGPT's installed skill entry skill is a separate installed entry point,
         // not a DeepSeek Harness skill. Keep the provenance of both catalogs.
         let chatHub = "d-chatgpt-skills"
         if ids.insert(chatHub).inserted {
             ns.append(["id":chatHub,"g":"src","w":1.0])
         }
-        if keys.insert(edgeKey(chatHub,"d-vera-core")).inserted {
-            es.append(["a":chatHub,"b":"d-vera-core","w":0.9])
+        if keys.insert(edgeKey(chatHub,"d-skill-entry")).inserted {
+            es.append(["a":chatHub,"b":"d-skill-entry","w":0.9])
         }
         // Genuine ChatGPT connector results are distinct from native DSH tools.
         let chatToolHub = "d-chatgpt-tools"
@@ -284,7 +284,7 @@ struct AtlasLiveData {
         }
         let hub = "d-harness-skills"
         if ids.insert(hub).inserted { ns.append(["id":hub,"g":"src","w":1.0]) }
-        // Stable route to the catalog, not an assertion that VeraCore was invoked.
+        // Stable route to the catalog, not an assertion that installed skill entry was invoked.
         if keys.insert(edgeKey("d-reader",hub)).inserted {
             es.append(["a":"d-reader","b":hub,"w":0.7])
         }
@@ -354,10 +354,10 @@ struct AtlasLiveData {
     }
 
     private static func routeEdges(_ op: String) -> [[String]] {
-        // An adapter read is not proof of a ChatGPT VeraCore skill invocation.
-        // The VeraCore node is part of the reference graph, never auto-pulsed.
-        if op == "vera-core" {
-            return [["d-chatgpt-skills","d-vera-core"],routes[0]]
+        // An adapter read is not proof of a ChatGPT installed skill entry skill invocation.
+        // The installed skill entry node is part of the reference graph, never auto-pulsed.
+        if op == "skill-entry" {
+            return [["d-chatgpt-skills","d-skill-entry"],routes[0]]
         }
         if op == "shared-memory" { return Array(routes[1...3]) }
         let nodeNames=["node-memory":"d-node-memory","node-journal":"d-node-journal",
@@ -367,7 +367,7 @@ struct AtlasLiveData {
             return [["d-canon",target]]
         }
         let names=["canon":"d-canon","protocol":"d-protocol","index":"d-index",
-                   "flash":"d-flash","soroka":"d-soroka","mempalace":"d-mempalace",
+                   "flash":"d-flash","archive-index":"d-archive-index","archive-store":"d-archive-store",
                    "knowledge-graph":"d-knowledge-graph"]
         guard let target=names[op] else { return [] }
         return [["d-reader",target]]
@@ -609,7 +609,7 @@ struct AtlasLiveData {
 
     private static func category(_ raw: String) -> String {
         let source = raw.lowercased()
-        for marker in ["skysight", "session", "ideas", "lightrag", "graphify", "temporal", "telegram", "tg-private", "obsidian", "soroka", "palace", "note"] where source.contains(marker) {
+        for marker in ["skysight", "session", "ideas", "lightrag", "graphify", "temporal", "telegram", "tg-private", "obsidian", "archive-index", "palace", "note"] where source.contains(marker) {
             return marker
         }
         return "other"
@@ -706,10 +706,10 @@ struct AtlasLiveData {
         "subagent-catalog","tool-call","tool-result"
     ]
     private static let accessOperations: Set<String> = [
-        "flash", "shared-memory", "soroka", "mempalace", "knowledge-graph",
+        "flash", "shared-memory", "archive-index", "archive-store", "knowledge-graph",
         "chatgpt-memory", "chatgpt-memory-write", "canon", "protocol", "index",
         "node-memory", "node-journal", "node-routes", "node-models",
-        "node-dsh", "node-learning", "vera-core", "skill", "document", "tool",  "project-link", "tool-result", "harness-event", "process-event"
+        "node-dsh", "node-learning", "skill-entry", "skill", "document", "tool",  "project-link", "tool-result", "harness-event", "process-event"
     ]
 
     private func readAccessEvents() -> [AtlasMemoryAccessEvent] {
@@ -812,7 +812,10 @@ struct AtlasLiveData {
         let events = readAccessEvents()
         guard let cursor else { return Array(events.suffix(8)) }
         if let index = events.lastIndex(where: { $0.id == cursor }) {
-            return Array(events.dropFirst(index + 1).suffix(32))
+            // Do not drop a bus burst between polls. The caller keeps the
+            // pending routes and delivers them in bounded batches, while the
+            // cursor marks the latest observed event.
+            return Array(events.dropFirst(index + 1))
         }
         return Array(events.suffix(8))
     }

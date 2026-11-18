@@ -16,7 +16,7 @@ dist/
 
 # Private runtime artifacts (must never go to Git)
 .dsh/
-.mempalace*/
+.*palace*/
 *.jsonl
 *.sqlite
 *.sqlite3

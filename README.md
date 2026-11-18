@@ -111,7 +111,7 @@ listen to a microphone; a voice agent must have actual connector access.
 The public edition deliberately does **not** scan your memory folders, session history or secrets on install. You may opt in to selected sources:
 
 - **Generic processes**: import `record_access` from `scripts/vera_atlas_access.py`. Emit a `process-event` at an actual start or completion; pass stable opaque model/task IDs and a distinct attempt ID.
-- **DeepSeek Harness**: enable the optional passive session watcher by supplying explicit folder paths. No paid calls or additional agents are made.
+- **DeepSeek Harness**: enable the optional passive session watcher by supplying explicit folder paths. No paid calls or additional agents are made. Document reads and project paths are independently disabled unless you configure `VERA_ATLAS_DOCUMENT_ROOTS` and `VERA_ATLAS_PROJECTS_ROOT`.
 - **ChatGPT and scripts**: use the opt-in workbench event wrapper or emit a confirmed receipt after an actual completed tool call. Not all internal ChatGPT calls can be intercepted.
 - **Knowledge source**: use the documented JSON graph schema to replace the synthetic base. Never commit private graph exports.
 

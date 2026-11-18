@@ -145,7 +145,9 @@ final class AtlasLiveMonitor {
         }
         guard !memoryAccessJavaScriptInFlight else { return }
         let pulseCount = min(4, queuedMemoryPulses)
-        let readyDeltas = pendingAccessDeltas.sorted { $0.key < $1.key }
+        // atlas.js accepts at most 128 deltas per batch. Keep the rest pending
+        // instead of dropping a whole observed burst.
+        let readyDeltas = Array(pendingAccessDeltas.sorted { $0.key < $1.key }.prefix(128))
         guard pulseCount > 0 || !readyDeltas.isEmpty else { return }
 
         memoryAccessJavaScriptInFlight = true

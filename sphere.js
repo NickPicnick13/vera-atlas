@@ -756,9 +756,9 @@ class Sphere {
          for(const [id,p] of foreground){
             if(!p.visible||p.x<-20||p.y<-20||p.x>w+20||p.y>h+20)continue;
             const src=this.graph.byId.get(id).g==='src',hit=reduced?0:beats.get(id)||0;
-            // The actual VeraCore invocation is the central entry in a verified
+            // The actual installed skill entry invocation is the central entry in a verified
             // retrieval chain; emphasize only its selected node, never at idle.
-            const entry=id==='d-vera-core';
+            const entry=id==='d-skill-entry';
             c.globalAlpha=emit*(.77+.23*hit);
             glow(c,this.traceState==='error'?this.red:this.traceState==='returned'?this.gold:this.sky,p,(entry?19:src?11:8.5)*(1+.3*hit));
             c.globalAlpha=emit*.84;c.fillStyle=this.traceState==='error'?'#ff899f':this.traceState==='returned'?'#ffe1a3':entry?'#ceeaff':'#8fd0ff';

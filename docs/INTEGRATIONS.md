@@ -82,6 +82,21 @@ VERA_ATLAS_DSH_SKILLS_DIR="$HOME/.dsh/skills" \
 python3 -B scripts/vera_atlas_skill_watch.py
 ```
 
+The watcher does **not** inspect arbitrary documents merely because DSH
+observation is enabled. To observe confirmed document read events, explicitly
+set `VERA_ATLAS_DOCUMENT_ROOTS` to a directory you authorize (multiple roots
+may be separated by the OS path separator). To associate documents with
+projects, additionally set `VERA_ATLAS_PROJECTS_ROOT` to the parent directory
+containing those projects. For example:
+
+```sh
+VERA_ATLAS_DOCUMENT_ROOTS="$HOME/Documents/SharedDemos" VERA_ATLAS_PROJECTS_ROOT="$HOME/Documents/SharedDemos" VERA_ATLAS_DSH_SESSIONS_DIR="$HOME/.dsh/sessions" python3 -B scripts/vera_atlas_skill_watch.py
+```
+
+Without these document/project variables, the watcher records no file-level
+document/project observations. Even when enabled, only opaque hashed IDs
+are emitted; contents and filenames are never written to the event bus.
+
 This is a passive foreground watcher; Ctrl+C stops it. `--once` scans once; `--dry-run` does not emit events. It never starts a model or an agent. Do not register it as a background service until you have checked your local paths and permissions.
 
 Optional native DSH desktop running-state integration needs both `VERA_ATLAS_DSH_WORKSPACE` and `VERA_ATLAS_DSH_SECRET_FILE` set to **local paths**, not raw secret values. Without them, the app does not contact DSH Desktop. A Finder launch may not inherit terminal environment variables.

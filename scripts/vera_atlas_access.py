@@ -18,10 +18,10 @@ ACCESS_PATH = Path.home() / "Library/Application Support/VeraAtlas/atlas-access.
 ACCESS_KEEP = 512
 VALID_ID = re.compile(r"^[0-9a-f]{32}$")
 OPERATIONS = frozenset({
-    "flash", "shared-memory", "soroka", "mempalace", "knowledge-graph",
+    "flash", "shared-memory", "archive-index", "archive-store", "knowledge-graph",
     "chatgpt-memory", "chatgpt-memory-write", "canon", "protocol", "index",
     "node-memory", "node-journal", "node-routes", "node-models",
-    "node-dsh", "node-learning", "vera-core", "skill", "document", "tool", "tool-result", "project-link", "harness-event", "process-event",
+    "node-dsh", "node-learning", "skill-entry", "skill", "document", "tool", "tool-result", "project-link", "harness-event", "process-event",
 })
 
 

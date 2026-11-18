@@ -10,6 +10,7 @@
 - [x] A synthetic event follows a distinct model → request → task route; no actual API request is made.
 - [x] Source and document scan shows no credentials, private absolute paths, Notion exports, chat transcripts, or private screenshots.
 - [x] No DSH session scanning or secret reading without explicit opt-in variables.
+- [x] Public event graph uses generic source names; file/project observations need separately approved roots, with no hard-coded personal workspace paths.
 - [x] macOS bundle identifier does not collide with the original app.
 - [x] Screenshot is a **headless synthetic** rendering, not a desktop capture.
 

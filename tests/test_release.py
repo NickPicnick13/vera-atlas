@@ -81,6 +81,40 @@ class PublicReleaseTests(unittest.TestCase):
             self.assertEqual(sum(x.get("stage")=="started" for x in rows),2)
             self.assertEqual(sum(x.get("stage")=="result" for x in rows),2)
 
+    def test_document_and_project_observation_requires_explicit_roots(self):
+        from unittest.mock import patch
+        from vera_atlas_skill_watch import document_event, project_id_for_document
+
+        with tempfile.TemporaryDirectory() as temp:
+            base = pathlib.Path(temp)
+            approved = base / "approved"
+            project = approved / "sample-project"
+            project.mkdir(parents=True)
+            document = project / "sample.md"
+            document.write_text("synthetic fixture")
+            outside = base / "outside"
+            outside.mkdir()
+            other = outside / "sample.md"
+            other.write_text("synthetic fixture")
+            protected = project / "secret-settings.md"
+            protected.write_text("synthetic fixture")
+            with patch.dict(os.environ, {"VERA_ATLAS_DOCUMENT_ROOTS": "",
+                                      "VERA_ATLAS_PROJECTS_ROOT": ""}):
+                self.assertIsNone(document_event(str(document), str(project)))
+                self.assertIsNone(project_id_for_document(str(document), str(project)))
+            with patch.dict(os.environ, {"VERA_ATLAS_DOCUMENT_ROOTS": str(approved),
+                                      "VERA_ATLAS_PROJECTS_ROOT": str(approved)}):
+                doc = document_event(str(document), str(project))
+                self.assertIsNotNone(doc)
+                self.assertEqual(doc[0], "document")
+                self.assertRegex(doc[1], r"^f-[0-9a-f]{24}$")
+                self.assertRegex(project_id_for_document(str(document), str(project)),
+                                 r"^p-[0-9a-f]{24}$")
+                self.assertIsNone(document_event(str(other), str(outside)))
+                self.assertIsNone(project_id_for_document(str(other), str(outside)))
+                self.assertIsNone(document_event(str(protected), str(project)))
+                self.assertIsNone(project_id_for_document(str(protected), str(project)))
+
     def test_no_private_assets(self):
         self.assertFalse((ROOT/"gsap.min.js").exists())
         self.assertFalse((ROOT/"PROJECT_CONTEXT.md").exists())

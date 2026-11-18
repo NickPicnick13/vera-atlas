@@ -71,26 +71,21 @@ def document_event(raw: object, cwd: str) -> tuple[str,str] | None:
         path = Path(cwd) / path
     try:
         path = path.resolve()
-        roots = (HOME / "Documents", HOME / ".dsh")
-        if not any(path.is_relative_to(root.resolve()) for root in roots):
+        # An opt-in watcher does not imply permission to inventory Documents or
+        # the runtime's private configuration. Scope file events separately.
+        configured = os.environ.get("VERA_ATLAS_DOCUMENT_ROOTS", "")
+        roots = [Path(raw).expanduser().resolve() for raw in configured.split(os.pathsep) if raw.strip()]
+        approved_root = next((root for root in roots if path.is_relative_to(root)), None)
+        if approved_root is None:
             return None
         if path.suffix.lower() not in ALLOWED_SUFFIX or not path.is_file():
             return None
-        if any(word in path.name.lower() for word in SECRET_WORDS):
+        # Check relative components only: macOS resolves /var into /private/var,
+        # so filtering the absolute path would deny all temporary test fixtures.
+        relative = path.relative_to(approved_root)
+        if any(word in part.lower() for part in relative.parts for word in SECRET_WORDS):
             return None
-        # Reuse the existing canonical nodes; never represent one known file twice.
-        canon = HOME / ".dsh/AGENTS.md"
-        if path == canon.resolve():
-            return ("canon", "")
-        workspace = HOME / "Documents/deepseek-harness/default-workspace"
-        if path == (workspace / "reports/PROTOCOL.md").resolve():
-            return ("protocol", "")
-        if path == (workspace / "reports/protocols/INDEX.md").resolve():
-            return ("index", "")
-        for name in ("memory","journal","routes","models","dsh","learning"):
-            if path == (HOME / ".dsh/nodes" / (name+".md")).resolve():
-                return ("node-"+name, "")
-        return ("document", "f-" + hashlib.sha256(("dsh-file:" + str(path)).encode()).hexdigest()[:24])
+        return ("document", "f-" + hashlib.sha256(("atlas-file:" + str(path)).encode()).hexdigest()[:24])
     except (OSError, ValueError):
         return None
 
@@ -100,11 +95,12 @@ def project_id_for_document(raw: object, cwd: str) -> str | None:
     if not path.is_absolute(): path = Path(cwd) / path
     try:
         path = path.resolve()
-        # Project boundary is the directly nested folder under Codex.
-        root = (HOME / "Documents/Codex").resolve()
+        configured = os.environ.get("VERA_ATLAS_PROJECTS_ROOT")
+        if not configured: return None
+        root = Path(configured).expanduser().resolve()
         rel = path.relative_to(root)
         if len(rel.parts) < 2 or not path.is_file(): return None
-        if any(word in path.name.lower() for word in SECRET_WORDS): return None
+        if any(word in part.lower() for part in rel.parts for word in SECRET_WORDS): return None
         return "p-" + hashlib.sha256(("atlas-project:" + str(root / rel.parts[0])).encode()).hexdigest()[:24]
     except (OSError,ValueError): return None
 

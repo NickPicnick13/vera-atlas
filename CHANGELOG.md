@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.0-rc.4] — 2026-11-19
+
+- Made public source identifiers generic instead of shipping developer-specific
+  memory-system and skill names. Event producers with old private category
+  labels should use the documented generic category contract.
+- Removed default file/project scan roots and hard-coded personal
+  workspace layout from the optional watcher. Document/project observation now
+  needs separate, explicit root configuration. Added regression tests.
+- Preserved the live-event burst fixes: no silent truncation of source events
+  or loss of graph deltas when more than 128 arrive between WebKit polls.
+- Privacy audit covered tracked source, history, release assets, and metadata.
+  This is a source-only prerelease, not a signed notarized app.
+
 ## Unreleased — one-screen narrated presentation
 
 - Added `presentation-small` and `presentation-full` to show a compact

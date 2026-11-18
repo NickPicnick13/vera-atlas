@@ -50,10 +50,10 @@ def has_visual_route(event):
     if op == "process-event":
         return event.get("stage") in ("result", "started", "retry")
     return op in {
-        "flash", "shared-memory", "soroka", "mempalace", "knowledge-graph",
+        "flash", "shared-memory", "archive-index", "archive-store", "knowledge-graph",
         "chatgpt-memory", "chatgpt-memory-write", "canon", "protocol", "index",
         "node-memory", "node-journal", "node-routes", "node-models", "node-dsh",
-        "node-learning", "vera-core", "skill", "document", "tool", "tool-result",
+        "node-learning", "skill-entry", "skill", "document", "tool", "tool-result",
         "project-link", "harness-event"
     }
 
