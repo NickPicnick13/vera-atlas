@@ -2,7 +2,9 @@
 
 **Живая карта памяти, инструментов, моделей и процессов на рабочем столе macOS.**
 
-![Демонстрационный граф, без личных данных](docs/preview.png)
+[![Vera Atlas — посмотреть видеодемонстрацию на YouTube](docs/preview.png)](https://www.youtube.com/watch?v=Zz7Jms8bCrs)
+
+**[▶ Смотреть видеодемонстрацию Vera Atlas на YouTube](https://www.youtube.com/watch?v=Zz7Jms8bCrs)** — показываем живой граф в нашей рабочей конфигурации. Публичный репозиторий содержит отдельный безопасный демонстрационный граф.
 
 [English README](README.md) · [Архитектура](docs/ARCHITECTURE.md) · [Интеграции](docs/INTEGRATIONS.md) · [Конфиденциальность](docs/PRIVACY.md)
 

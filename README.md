@@ -2,7 +2,9 @@
 
 **A living map of memory, models and real processes — on your macOS desktop.**
 
-![Synthetic demo of Vera Atlas](docs/preview.png)
+[![Vera Atlas — watch the live presentation on YouTube](docs/preview.png)](https://www.youtube.com/watch?v=Zz7Jms8bCrs)
+
+**[▶ Watch the Vera Atlas video demonstration on YouTube](https://www.youtube.com/watch?v=Zz7Jms8bCrs)** — A walkthrough of the live, personally configured Atlas. The public repository ships a separate synthetic demo graph.
 
 Vera Atlas is a transparent macOS menu-bar app with a GPU-rendered constellation. Models and knowledge sources are **persistent dots**; instrumented tool calls, document accesses and task attempts are **temporary glowing paths**. It is an observability display, **not** an autonomous agent and not a model launcher.
 
