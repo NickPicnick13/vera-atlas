@@ -2,7 +2,7 @@
 
 **A living map of memory, models and real processes — on your macOS desktop.**
 
-[![Vera Atlas — watch the live presentation on YouTube](docs/preview.png)](https://www.youtube.com/watch?v=Zz7Jms8bCrs)
+[![Vera Atlas live demonstration — glowing traces and comets](docs/video-cover.png)](https://www.youtube.com/watch?v=Zz7Jms8bCrs)
 
 **[▶ Watch the Vera Atlas video demonstration on YouTube](https://www.youtube.com/watch?v=Zz7Jms8bCrs)** — A walkthrough of the live, personally configured Atlas. The public repository ships a separate synthetic demo graph.
 
