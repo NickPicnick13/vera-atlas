@@ -381,6 +381,9 @@ class Sphere {
       this.cometEventNumber=0;
       this.adaptiveShape=true; // viewport fit of ORIGINAL sphere
       this.shapeMorph=0;this.shapeStamp=null;
+      this.liveFocus=0;this.liveFocusStamp=null;
+      this.liveAutoCamera=null;this.liveCamStamp=null;
+      this.edgeStarted=new Map();
       this.activeActorID=null; // verified active session ID from native DSH read-only state
        this.memoryAccesses=[];this.memoryAccessSequence=0;
       this.traceState='called';
@@ -402,10 +405,29 @@ class Sphere {
     }
    mergeData(delta){return addGraph(this.graph,delta);}
    setTrace(trace,now,mode='replay'){
-      this.focus=focusOf(trace||{},this.graph);this.started=now;this.traceMode=mode;this.returning=null;
+      const nextFocus=focusOf(trace||{},this.graph);
+      const prevEdges=new Map();
+      if(Number.isFinite(this.started)&&this.focus.edges.length){
+         for(const e of this.focus.edges){
+            const est=this.edgeStarted.get(e.k)??this.started;
+            const eAge=now-est;
+            if(eAge>=270&&eAge<6900){
+               prevEdges.set(e.k,{started:est,mode:this.cometModes.get(e.k)});
+            }
+         }
+      }
+      this.focus=nextFocus;this.started=now;this.traceMode=mode;this.returning=null;
       this.cometEventNumber++;
       this.cometModes=new Map();
+      this.edgeStarted=new Map();
       this.focus.edges.forEach((edge,i)=>{
+         const continuing=prevEdges.get(edge.k);
+         if(continuing){
+            this.edgeStarted.set(edge.k,continuing.started);
+            if(continuing.mode){this.cometModes.set(edge.k,continuing.mode);return;}
+         }else{
+            this.edgeStarted.set(edge.k,now);
+         }
          const seed=hash(edge.k+'|'+String(trace?.ts||'')+'|'+this.cometEventNumber);
          const previous=this.cometHistory.get(edge.k);
          // Four styles; never repeat the last one used on this real edge.
@@ -482,17 +504,23 @@ class Sphere {
          panX:0,panY:0
       };
       this.returning=null;
+      this.liveAutoCamera=null;this.liveCamStamp=null;
       this.shapeStamp=null; // re-evaluate the geometric fit on the next draw
    }
    resetCamera(){
       this.manualOverride=true;this.camera={distance:HOME,panX:0,panY:0};
       this.pose={yaw:0,pitch:0};this.angle=0;
       this.spin={direction:null,speed:0,dragging:false};
+      this.liveAutoCamera=null;this.liveCamStamp=null;
    }
    takeCamera(){
-      if(!this.manualOverride&&this.lastCamera?.automatic){
-         const {distance,panX,panY}=this.lastCamera;this.camera={distance,panX,panY};
+      if(!this.manualOverride){
+         const src=this.liveAutoCamera||(this.lastCamera?.automatic?this.lastCamera:null);
+         if(src){
+            const {distance,panX,panY}=src;this.camera={distance,panX,panY};
+         }
       }
+      this.liveAutoCamera=null;this.liveCamStamp=null;
       this.manualOverride=true;
    }
    panBy(dx,dy){
@@ -581,24 +609,61 @@ class Sphere {
       const distance=Math.max(fit,center.z+.91);
       return {distance,panX:-center.x,panY:-center.y};
    }
+   isMorphing(){
+      if(Math.abs(this.liveFocus-(this.lastView?.focus||0))>.001)return true;
+      if(this.liveAutoCamera&&!this.manualOverride){
+         const d=Math.abs(this.liveAutoCamera.distance-this.camera.distance)+
+                 Math.abs(this.liveAutoCamera.panX-this.camera.panX)+
+                 Math.abs(this.liveAutoCamera.panY-this.camera.panY);
+         if(d>.0005)return true;
+      }
+      return false;
+   }
    eye(){return (this.compact?Math.min(this.w,this.h)*.43:Math.min(this.w*.365,this.h*.44))*HOME;}
    render(now,{reduced=false,seek=false,ageOverride,angle}={}) {
       const c=this.c,w=this.w,h=this.h;if(!c||!w||!h)return null;
       c.clearRect(0,0,w,h);
       if(!this.graph.nodes.length){this.lastView=null;return null;}
       const age=ageOverride??(now-(this.started??now)),chosen=this.focus.edges.length>0;
-      const liveWindow=this.traceMode==='live'&&(this.showContinuousWorkLines?this.working:age<8750);
+      let activeFocus=0;
+      if(chosen){
+         if(ageOverride!==undefined||!this.edgeStarted?.size){
+            const liveWin=this.traceMode==='live'&&(this.showContinuousWorkLines?this.working:age<8750);
+            const lkd=liveWin,rpl=this.traceMode==='replay';
+            activeFocus=lkd?(this.showContinuousWorkLines?(reduced?1:smooth(age/900)):(reduced?(age<8750?1:0):envelope(age))):
+                            (rpl?(reduced?(age<8750?1:0):envelope(age)):0);
+         }else{
+            for(const e of this.focus.edges){
+               const ea=now-(this.edgeStarted.get(e.k)??this.started);
+               const liveWin=this.traceMode==='live'&&(this.showContinuousWorkLines?this.working:ea<8750);
+               const rpl=this.traceMode==='replay';
+               const op=liveWin?(this.showContinuousWorkLines?(reduced?1:smooth(ea/900)):(reduced?(ea<8750?1:0):envelope(ea))):
+                                (rpl?(reduced?(ea<8750?1:0):envelope(ea)):0);
+               if(op>activeFocus){activeFocus=op;if(activeFocus>=1)break;}
+            }
+         }
+      }
+      const liveWindow=this.traceMode==='live'&&(this.showContinuousWorkLines?this.working:activeFocus>.001);
       const linked=chosen&&liveWindow;
       const replay=chosen&&this.traceMode==='replay';
       // Concrete events fade after ~9s in pulse mode; never lock their paths
       // to a long-running model's "running" status.
-      const replayFocus=linked?(this.showContinuousWorkLines?(reduced?1:smooth(age/900)):(reduced?(age<8750?1:0):envelope(age))):
-                           (replay?(reduced?(age<8750?1:0):envelope(age)):0);
+      const replayFocus=activeFocus;
       const steadyWork=this.showContinuousWorkLines&&this.working&&replayFocus<.03&&
                        (this.harnessWorkFocus?.edges.length||0)>0;
       const focusData=steadyWork?this.harnessWorkFocus:this.focus;
       // Continuous work paths only in the optional legacy visualization.
-      const f=steadyWork?(reduced?.7:.55):replayFocus;
+      const targetFocus=steadyWork?(reduced?.7:.55):replayFocus;
+      const dtFocus=this.liveFocusStamp===null?1000:now-this.liveFocusStamp;
+      this.liveFocusStamp=now;
+      if(seek||reduced||ageOverride!==undefined||dtFocus<0||dtFocus>250){
+         this.liveFocus=targetFocus;
+      }else{
+         const tau=targetFocus>=this.liveFocus?220:380;
+         this.liveFocus=mix(this.liveFocus,targetFocus,1-Math.exp(-clamp(dtFocus,0,120)/tau));
+         if(Math.abs(this.liveFocus-targetFocus)<.0005)this.liveFocus=targetFocus;
+      }
+      const f=this.liveFocus;
       const workAge=ageOverride??(now-this.workStarted);
       const activity=this.working?(reduced?.78:.72+.18*Math.cos(TAU*workAge/2050)):0;
        const memoryPulse=this.memoryPulseLevel(now,reduced);
@@ -642,6 +707,34 @@ class Sphere {
          }
       }
       this.lastCamera=s;
+      if(!reduced&&!this.manualOverride){
+         const dtCam=this.liveCamStamp===null?1000:now-this.liveCamStamp;
+         this.liveCamStamp=now;
+         const goalCam={distance:s.distance,panX:s.panX,panY:s.panY};
+         if(seek||ageOverride!==undefined||!this.liveAutoCamera||dtCam<0||dtCam>250){
+            this.liveAutoCamera=goalCam;
+         }else{
+            const tau=(f>.001&&!steadyWork&&s.shapeMorph<.38)?320:420;
+            const k=1-Math.exp(-clamp(dtCam,0,120)/tau);
+            this.liveAutoCamera.distance=mix(this.liveAutoCamera.distance,goalCam.distance,k);
+            this.liveAutoCamera.panX=mix(this.liveAutoCamera.panX,goalCam.panX,k);
+            this.liveAutoCamera.panY=mix(this.liveAutoCamera.panY,goalCam.panY,k);
+            const home=this.camera;
+            const dHome=Math.abs(this.liveAutoCamera.distance-home.distance)+
+                        Math.abs(this.liveAutoCamera.panX-home.panX)+
+                        Math.abs(this.liveAutoCamera.panY-home.panY);
+            if(f<=.001&&dHome<.0003){
+               this.liveAutoCamera={distance:home.distance,panX:home.panX,panY:home.panY};
+            }
+            s.distance=this.liveAutoCamera.distance;
+            s.panX=this.liveAutoCamera.panX;
+            s.panY=this.liveAutoCamera.panY;
+            s.automatic=s.automatic||dHome>.0003;
+            this.lastCamera=s;
+         }
+      }else{
+         this.liveAutoCamera=null;this.liveCamStamp=now;
+      }
       const gpuDraw=!!this.gpu?.draw(this.graph,focusData,this.hover,s,w,h,this.dpr,this.showIdleLines);
       if(!gpuDraw)this.renderFallback(s,focusData);
       const edges=focusData.edges,world=new Map(),foreground=new Map(),signals=[],beats=new Map();
@@ -653,11 +746,12 @@ class Sphere {
       if((chosen||steadyWork)&&emit>.008){
          c.save();c.lineCap='round';
          edges.forEach((e,i)=>{
+            const eAge=ageOverride!==undefined?age:(now-(this.edgeStarted?.get(e.k)??this.started));
             const src=this.graph.byId.get(e.b).g==='src'&&this.graph.byId.get(e.a).g!=='src'?e.b:e.a;
             const leaf=src===e.a?e.b:e.a,a=world.get(src),b=world.get(leaf),line=screenEdge(a,b,s);if(!line)return;
             // The illuminated stroke is the very same projected segment as the normal graph edge.
             c.globalAlpha=emit*.30;c.strokeStyle=this.traceState==='error'?'#ff7b94':this.traceState==='returned'?'#e6bd78':'#86b5ff';c.lineWidth=.76;stroke(c,...line);
-            const t=Math.max(0,age-270-(i%5)*120),progress=reduced?.53:packet(t+270);
+            const t=Math.max(0,eAge-270-(i%5)*120),progress=reduced?.53:packet(t+270);
             const dir=reduced?0:Math.sin(TAU*t/3000)<0?-1:1;
             // Every comet belongs to a confirmed graph edge. The BASE pulse
             // below remains identical in all modes; these are ONLY decorative

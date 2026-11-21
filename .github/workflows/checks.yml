@@ -25,6 +25,8 @@ jobs:
         run: node tests/atlas_comet_variants_qa.js
       - name: Verify full-screen real graph boundary fitting
         run: node tests/atlas_frame_fit_qa.js
+      - name: Smooth camera and focus morph under multi-stream bursts
+        run: node tests/atlas_morph_smooth_qa.js
       - name: Verify deterministic synthetic graph
         run: |
           python3 -B examples/generate_demo.py

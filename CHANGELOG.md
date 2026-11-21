@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased] — smooth morph transitions under concurrent bursts
+
+- Added continuous exponential damping for focus level (`liveFocus`) and
+  automatic camera transitions (`liveAutoCamera`), preventing abrupt focus
+  resets, zoom snaps, and brightness flashes when multiple event streams
+  overlap.
+- Preserved in-flight edge clocks across overlapping `setTrace` bursts so
+  active edges continue their trip without snapping back to start.
+- Coalesced live draws onto `requestAnimationFrame` at 60 fps during active
+  motion (22 fps at idle) instead of synchronous out-of-band redraws.
+- Added `tests/atlas_morph_smooth_qa.js` and wired it into CI checks.
+
 ## [0.1.0-rc.4] — 2026-11-19
 
 - Made public source identifiers generic instead of shipping developer-specific

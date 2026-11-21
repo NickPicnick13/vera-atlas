@@ -12,6 +12,7 @@ let lastDraw=-Infinity,lastFrame=0,testing=false,seekAge=0,demo=false,ready=fals
 let chromeKey='',readySent=false,focusSent=false,workEpoch=null,paintKey='';
 let lastRegion='';
 const request = () => { if (!frameID && !testing && !document.hidden) frameID=requestAnimationFrame(frame); };
+const scheduleDraw = () => { if (testing || !ready || document.hidden || lastDraw < 0) { draw(); request(); } else request(); };
 const plural = n => {const k=n%100,j=n%10;return `${n} ${k>=11&&k<=14?'фрагментов':j===1?'фрагмент':j>=2&&j<=4?'фрагмента':'фрагментов'}`;};
 function example() {
    const nodes=Array.from({length:1200},(_,i)=>({id:`demo-${i}`,g:i%19===0?'src':'core',w:(i*29%71)/100+.25}));
@@ -77,7 +78,8 @@ function draw(at=performance.now()) {
 }
 function frame(at) {
    frameID=0;
-   const cadence=sphere.working||view?.phase!=='idle'?1000/32:1000/22;
+   const activeMotion=sphere.working||view?.phase!=='idle'||!!sphere.isMorphing?.();
+   const cadence=activeMotion?1000/60:1000/22;
    if(at-lastDraw>=cadence-2) {
       const dt=lastFrame?Math.min(120,at-lastFrame):0;lastFrame=at;
       if(!reduced.matches) {
@@ -111,7 +113,7 @@ function applyTrace(t,{force=false,mode='replay'}={}) {
    if(!force&&sig===signature)return;
    signature=sig;trace=next;sphere.setTrace(next,performance.now(),mode);
    hasFocus=!!sphere.focus.edges.length;focusSent=false;
-   remember(next);seekAge=0;chromeKey='';if(!mergeBatchDepth){draw();request();}
+   remember(next);seekAge=0;chromeKey='';if(!mergeBatchDepth){if(typeof scheduleDraw==='function')scheduleDraw();else{draw();request();}}
 }
 function setData(data,illustration=false) {
    graph=data||{};demo=illustration;
@@ -138,11 +140,11 @@ window.__setAtlasActivity=({running=false,epoch=null,actorID=null}={})=>{
    if(running&&sphere.working&&workEpoch!==epoch){sphere.handoffActivity(now);signature=null;}
    else sphere.setActivity(running===true,now);
    workEpoch=epoch;
-   hasFocus=!!sphere.focus.edges.length;chromeKey='';draw();request();
+   hasFocus=!!sphere.focus.edges.length;chromeKey='';scheduleDraw();
 };
 window.__atlasMemoryAccess=()=>{
    const sequence=sphere.memoryAccess(performance.now());
-   chromeKey='';draw();request();
+   chromeKey='';scheduleDraw();
    return sequence;
 };
 window.__atlasSetIdleLines=enabled=>{
@@ -313,7 +315,7 @@ window.__mergeAtlasTrace=d=>{
       }
       storeActivity(incoming);
       applyTrace(incoming,{mode:d.memoryAccess===true?'replay':'live'});
-   }else {chromeKey='';if(!mergeBatchDepth){draw();request();}}
+   }else {chromeKey='';if(!mergeBatchDepth){if(typeof scheduleDraw==='function')scheduleDraw();else{draw();request();}}}
 };
 // Merge 20+ genuine Harness tool/model events in one actual render frame.
 // Each trace still contributes its own verified edges; no synthetic links.
@@ -322,7 +324,7 @@ window.__mergeAtlasBatch=deltas=>{
    mergeBatchDepth++;
    try{for(const delta of deltas)window.__mergeAtlasTrace(delta);}
    finally{mergeBatchDepth--;}
-   chromeKey='';draw();request();
+   chromeKey='';if(typeof scheduleDraw==='function')scheduleDraw();else{draw();request();}
    return true;
 };
 const cssXY=e=>{const r=canvas.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
